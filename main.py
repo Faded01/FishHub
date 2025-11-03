@@ -1,37 +1,55 @@
 import sys
-import os
 from PyQt6.QtWidgets import QApplication
-from PyQt6.QtGui import QFontDatabase
-
-from gui.main_window import MainWindow
 from core.database import DatabaseManager
+from gui.login_window import LoginWindow
+from gui.main_window import MainWindow
 
 
 def load_styles():
-    """Загрузка стилей аналогично fullflash"""
+    """Загрузка файла стилей"""
     try:
-        with open('data/styles.qss', 'r') as f:
-            return f.read()
-    except:
+        with open('data/styles.qss', 'r', encoding='utf-8') as file:
+            return file.read()
+    except Exception as e:
+        print(f"Ошибка загрузки стилей: {e}")
         return ""
 
 
 def main():
+    """Главная функция запуска приложения"""
+    # Создаем приложение
     app = QApplication(sys.argv)
+    app.setApplicationName("FishHub")
 
-    # Загрузка стилей
-    stylesheet = load_styles()
-    if stylesheet:
-        app.setStyleSheet(stylesheet)
+    # Загружаем стили
+    styles = load_styles()
+    if styles:
+        app.setStyleSheet(styles)
 
-    # Инициализация БД
+    # Инициализируем базу данных
     db_manager = DatabaseManager()
     db_manager.init_database()
 
-    # Создание главного окна
-    window = MainWindow(db_manager)
-    window.show()
+    # Создаем окно авторизации
+    login_window = LoginWindow(db_manager)
 
+    # Переменная для хранения главного окна
+    main_window = None
+
+    def on_login_success(user_data):
+        """Функция вызывается при успешной авторизации"""
+        nonlocal main_window
+        # Создаем и показываем главное окно
+        main_window = MainWindow(db_manager, user_data)
+        main_window.show()
+
+    # Подключаем обработчик успешной авторизации
+    login_window.login_success.connect(on_login_success)
+
+    # Показываем окно авторизации
+    login_window.show()
+
+    # Запускаем приложение
     sys.exit(app.exec())
 
 
