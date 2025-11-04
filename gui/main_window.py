@@ -144,12 +144,14 @@ class MainWindow(QMainWindow):
         self.close()
 
     def closeEvent(self, event):
-        """Минимальная версия"""
+        """
+        При закрытии окна ставим пользователю статус 'Отключён'
+        и корректно завершаем соединение.
+        """
         try:
             user_id = self.user_data.get("id")
             if user_id:
                 self.db_manager.update_user_status_by_id(user_id, "Отключён")
-        except:
-            pass  # Игнорируем все ошибки при выходе
-
+        except Exception as e:
+            print(f"[ОШИБКА] Не удалось сбросить статус пользователя при выходе: {e}")
         event.accept()

@@ -82,10 +82,4 @@ def main():
 
 
 if __name__ == "__main__":
-    try:
-        app = QApplication(sys.argv)
-        main()
-        sys.exit(app.exec())
-    except Exception as e:
-        print(f"Ошибка приложения: {e}")
-        sys.exit(1)
+    main()
