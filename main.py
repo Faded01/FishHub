@@ -28,7 +28,6 @@ def main():
 
     # Инициализируем базу данных
     db_manager = DatabaseManager()
-    db_manager.init_database()
 
     # Создаем окно авторизации
     login_window = LoginWindow(db_manager)

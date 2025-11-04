@@ -1,0 +1,62 @@
+QMainWindow {
+    background-color: #f5f8fb;
+    font-family: "Segoe UI", Arial, sans-serif;
+    color: #1A3A52;
+}
+
+QFrame#card {
+    background-color: white;
+    border-radius: 10px;
+    padding: 18px;
+    border: 1px solid rgba(0,0,0,0.04);
+}
+
+QLabel#titleLabel {
+    font-size: 22px;
+    font-weight: 600;
+    color: #1776b6;
+}
+
+QLabel#subtitleLabel {
+    font-size: 12px;
+    color: #5a6b74;
+}
+
+QLineEdit {
+    background-color: #ffffff;
+    border: 1px solid #d6e6f2;
+    border-radius: 8px;
+    padding: 10px 12px;
+    min-height: 34px;
+}
+
+QLineEdit:focus {
+    border: 1px solid #4da3ff;
+    box-shadow: 0 4px 12px rgba(77,163,255,0.12);
+}
+
+QPushButton {
+    background-color: #4da3ff;
+    color: #ffffff;
+    border-radius: 8px;
+    padding: 8px 12px;
+    min-height: 36px;
+    border: none;
+}
+
+QPushButton:hover {
+    background-color: #2d82f6;
+}
+
+QPushButton#secondary {
+    background-color: transparent;
+    color: #1776b6;
+    border: 1px solid #d6e6f2;
+}
+
+QToolButton#eyeBtn {
+    border: none;
+    background: transparent;
+}
+
+QMessageBox QLabel { color: #1A3A52; }
