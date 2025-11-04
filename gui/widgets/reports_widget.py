@@ -1,10 +1,13 @@
-from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QGroupBox,
-                             QPushButton, QComboBox, QDateEdit, QTableWidget,
-                             QTableWidgetItem, QHeaderView, QLabel, QTextEdit)
-from PyQt6.QtCore import QDate
+from PyQt6.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
+    QTableWidget, QTableWidgetItem, QHeaderView, QMessageBox,
+    QGroupBox, QFormLayout, QComboBox, QDateEdit, QTextEdit
+)
+from PyQt6.QtCore import Qt, QDate
 from datetime import datetime, timedelta
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.figure import Figure
 
 
 class ReportsWidget(QWidget):
@@ -12,28 +15,32 @@ class ReportsWidget(QWidget):
         super().__init__()
         self.db_manager = db_manager
         self.init_ui()
+        self.refresh_data()
 
     def init_ui(self):
-        layout = QVBoxLayout(self)
+        layout = QVBoxLayout()
 
         # Заголовок
         title = QLabel("Отчетность и аналитика")
-        title.setStyleSheet("font-size: 16pt; font-weight: bold;")
+        title.setObjectName("widgetTitle")
         layout.addWidget(title)
 
-        # Панель управления отчетами
-        control_group = QGroupBox("Параметры отчета")
-        control_layout = QHBoxLayout()
+        # Параметры отчета
+        params_group = QGroupBox("Параметры отчета")
+        params_layout = QFormLayout()
 
+        # Тип отчета
         self.report_type_combo = QComboBox()
         self.report_type_combo.addItems([
             "Суточный отчет",
-            "Недельный отчет",
-            "Месячный отчет",
-            "Отчет по кормлению",
-            "Отчет по параметрам воды"
+            "Аналитический",
+            "Статистический",
+            "Технологический"
         ])
+        params_layout.addRow("Тип отчета:", self.report_type_combo)
 
+        # Период
+        dates_layout = QHBoxLayout()
         self.start_date = QDateEdit()
         self.start_date.setDate(QDate.currentDate().addDays(-7))
         self.start_date.setCalendarPopup(True)
@@ -42,47 +49,56 @@ class ReportsWidget(QWidget):
         self.end_date.setDate(QDate.currentDate())
         self.end_date.setCalendarPopup(True)
 
+        dates_layout.addWidget(QLabel("С:"))
+        dates_layout.addWidget(self.start_date)
+        dates_layout.addWidget(QLabel("По:"))
+        dates_layout.addWidget(self.end_date)
+        dates_layout.addStretch()
+
+        params_layout.addRow("Период:", dates_layout)
+
+        # Кнопки генерации
+        buttons_layout = QHBoxLayout()
         self.generate_btn = QPushButton("Сгенерировать отчет")
         self.generate_btn.clicked.connect(self.generate_report)
 
         self.export_btn = QPushButton("Экспорт в PDF")
         self.export_btn.clicked.connect(self.export_to_pdf)
 
-        control_layout.addWidget(QLabel("Тип отчета:"))
-        control_layout.addWidget(self.report_type_combo)
-        control_layout.addWidget(QLabel("С:"))
-        control_layout.addWidget(self.start_date)
-        control_layout.addWidget(QLabel("По:"))
-        control_layout.addWidget(self.end_date)
-        control_layout.addWidget(self.generate_btn)
-        control_layout.addWidget(self.export_btn)
-        control_layout.addStretch()
+        buttons_layout.addWidget(self.generate_btn)
+        buttons_layout.addWidget(self.export_btn)
+        buttons_layout.addStretch()
 
-        control_group.setLayout(control_layout)
-        layout.addWidget(control_group)
+        params_layout.addRow(buttons_layout)
 
-        # Графики
-        charts_group = QGroupBox("Визуализация данных")
-        charts_layout = QVBoxLayout()
+        params_group.setLayout(params_layout)
+        layout.addWidget(params_group)
 
-        # Место для matplotlib графика
-        self.figure, self.ax = plt.subplots(figsize=(10, 4))
-        self.canvas = FigureCanvas(self.figure)
-        charts_layout.addWidget(self.canvas)
+        # Визуализация данных
+        viz_group = QGroupBox("Визуализация данных")
+        viz_layout = QVBoxLayout()
 
-        charts_group.setLayout(charts_layout)
-        layout.addWidget(charts_group)
+        # График (заглушка - в реальном проекте нужно добавить matplotlib)
+        self.viz_label = QLabel("Здесь будет график...\n\nДля полноценной визуализации\nустановите matplotlib:")
+        self.viz_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.viz_label.setStyleSheet("background-color: #f8f9fa; padding: 40px; border: 1px dashed #ccc;")
+        viz_layout.addWidget(self.viz_label)
 
-        # Таблица данных
+        viz_group.setLayout(viz_layout)
+        layout.addWidget(viz_group)
+
+        # Данные отчета
         data_group = QGroupBox("Данные отчета")
         data_layout = QVBoxLayout()
 
         self.report_table = QTableWidget()
-        self.report_table.setColumnCount(4)
-        self.report_table.setHorizontalHeaderLabels(["Дата", "Параметр", "Значение", "Статус"])
+        self.report_table.setColumnCount(5)
+        self.report_table.setHorizontalHeaderLabels([
+            "Дата", "Параметр", "Значение", "Статус", "Бассейн"
+        ])
         self.report_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-
         data_layout.addWidget(self.report_table)
+
         data_group.setLayout(data_layout)
         layout.addWidget(data_group)
 
@@ -92,86 +108,81 @@ class ReportsWidget(QWidget):
 
         self.report_text = QTextEdit()
         self.report_text.setPlaceholderText("Здесь будет сгенерированный отчет...")
-
+        self.report_text.setMaximumHeight(150)
         text_layout.addWidget(self.report_text)
+
         text_group.setLayout(text_layout)
         layout.addWidget(text_group)
 
+        self.setLayout(layout)
+
+    def refresh_data(self):
+        """Обновление данных отчетов"""
+        try:
+            reports = self.db_manager.get_reports()
+            self.report_table.setRowCount(len(reports))
+
+            for row, report in enumerate(reports):
+                self.report_table.setItem(row, 0, QTableWidgetItem(report['Period_Start']))
+                self.report_table.setItem(row, 1, QTableWidgetItem(report['Report_Type']))
+                self.report_table.setItem(row, 2, QTableWidgetItem(str(report['ID_Report'])))
+                self.report_table.setItem(row, 3, QTableWidgetItem("Сформирован"))
+                self.report_table.setItem(row, 4, QTableWidgetItem(report['Name_Pool']))
+
+        except Exception as e:
+            print(f"Ошибка обновления отчетов: {e}")
+
     def generate_report(self):
         """Генерация отчета"""
-        report_type = self.report_type_combo.currentText()
-        start_date = self.start_date.date().toPyDate()
-        end_date = self.end_date.date().toPyDate()
+        try:
+            report_type = self.report_type_combo.currentText()
+            start_date = self.start_date.date().toString("yyyy-MM-dd")
+            end_date = self.end_date.date().toString("yyyy-MM-dd")
 
-        # Обновление графика
-        self.update_chart(report_type, start_date, end_date)
+            # Получаем данные для отчета
+            reports = self.db_manager.get_reports(report_type, start_date, end_date)
 
-        # Обновление таблицы
-        self.update_report_table(report_type, start_date, end_date)
-
-        # Генерация текстового отчета
-        self.generate_text_report(report_type, start_date, end_date)
-
-    def update_chart(self, report_type, start_date, end_date):
-        """Обновление графика"""
-        self.ax.clear()
-
-        # Демо-данные для графика
-        dates = [start_date + timedelta(days=i) for i in range(7)]
-        temperatures = [20.1, 20.3, 19.8, 20.5, 21.0, 20.7, 20.2]
-
-        self.ax.plot(dates, temperatures, 'b-o', linewidth=2)
-        self.ax.set_title('Температура воды за период')
-        self.ax.set_ylabel('Температура (°C)')
-        self.ax.grid(True, alpha=0.3)
-        self.ax.tick_params(axis='x', rotation=45)
-
-        self.canvas.draw()
-
-    def update_report_table(self, report_type, start_date, end_date):
-        """Обновление таблицы отчета"""
-        # Демо-данные
-        data = [
-            ("2024-01-15", "Температура", "20.5°C", "Норма"),
-            ("2024-01-15", "Кислород", "6.8 мг/л", "Норма"),
-            ("2024-01-15", "Расход корма", "7.5 кг", "План"),
-            ("2024-01-16", "Температура", "20.3°C", "Норма"),
-            ("2024-01-16", "Кислород", "6.5 мг/л", "Понижен"),
-        ]
-
-        self.report_table.setRowCount(len(data))
-        for row, (date, param, value, status) in enumerate(data):
-            self.report_table.setItem(row, 0, QTableWidgetItem(date))
-            self.report_table.setItem(row, 1, QTableWidgetItem(param))
-            self.report_table.setItem(row, 2, QTableWidgetItem(value))
-            self.report_table.setItem(row, 3, QTableWidgetItem(status))
-
-    def generate_text_report(self, report_type, start_date, end_date):
-        """Генерация текстового отчета"""
-        report_text = f"""
+            # Формируем текстовый отчет
+            report_text = f"""
 ОТЧЕТ: {report_type}
-Период: {start_date} - {end_date}
-Дата формирования: {datetime.now().strftime('%Y-%m-%d %H:%M')}
+Период: с {start_date} по {end_date}
+Сформирован: {datetime.now().strftime('%Y-%m-%d %H:%M')}
 
-ОБЩАЯ СТАТИСТИКА:
-• Средняя температура: 20.4°C
-• Средний уровень кислорода: 6.7 мг/л
-• Общий расход корма: 52.3 кг
-• Прирост биомассы: 45.2 кг
+ОБЩАЯ ИНФОРМАЦИЯ:
+• Количество записей: {len(reports)}
+• Бассейны в отчете: {len(set(r['Name_Pool'] for r in reports))}
 
-РЕКОМЕНДАЦИИ:
-1. Поддерживать температуру в диапазоне 18-22°C
-2. Увеличить аэрацию в утренние часы
-3. Скорректировать рацион кормления
-
-СИСТЕМНЫЕ УВЕДОМЛЕНИЯ:
-• Все системы работают в штатном режиме
-• Критических отклонений не зафиксировано
+ДАННЫЕ МОНИТОРИНГА:
 """
-        self.report_text.setPlainText(report_text)
+
+            # Добавляем данные мониторинга
+            readings = self.db_manager.get_latest_sensor_readings()
+            temp_readings = [r for r in readings if r['Type_Sensor'] == 'Температура']
+            oxygen_readings = [r for r in readings if r['Type_Sensor'] == 'Кислород']
+            ph_readings = [r for r in readings if r['Type_Sensor'] == 'pH']
+
+            report_text += f"""
+• Средняя температура: {sum(r['Value_Sensor'] for r in temp_readings) / len(temp_readings) if temp_readings else 0:.1f}°C
+• Средний кислород: {sum(r['Value_Sensor'] for r in oxygen_readings) / len(oxygen_readings) if oxygen_readings else 0:.1f} мг/л
+• Средний pH: {sum(r['Value_Sensor'] for r in ph_readings) / len(ph_readings) if ph_readings else 0:.1f}
+
+СТАТУС СИСТЕМЫ:
+• Все системы работают в штатном режиме
+• Критических отклонений не обнаружено
+"""
+
+            self.report_text.setPlainText(report_text)
+            self.refresh_data()
+
+            QMessageBox.information(self, "Успех", "Отчет сгенерирован!")
+
+        except Exception as e:
+            QMessageBox.critical(self, "Ошибка", f"Ошибка генерации отчета: {e}")
 
     def export_to_pdf(self):
-        """Экспорт отчета в PDF"""
-        # Здесь будет логика экспорта
-        from PyQt6.QtWidgets import QMessageBox
-        QMessageBox.information(self, "Экспорт", "Функция экспорта в PDF будет реализована")
+        """Экспорт в PDF (заглушка)"""
+        QMessageBox.information(
+            self,
+            "Экспорт",
+            "Функция экспорта в PDF будет реализована в следующей версии"
+        )

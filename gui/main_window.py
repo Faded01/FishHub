@@ -5,7 +5,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QAction
 from datetime import datetime
-
+import sqlite3
 from gui.widgets.monitoring_widget import MonitoringWidget
 from gui.widgets.feeding_widget import FeedingWidget
 from gui.widgets.reports_widget import ReportsWidget
@@ -97,6 +97,7 @@ class MainWindow(QMainWindow):
             f"Обновлено: {current_time}"
         )
 
+    # В методе manage_pools заменить на:
     def manage_pools(self):
         """Открыть окно управления бассейнами"""
         from gui.dialogs.pool_dialog import PoolManagerDialog
@@ -105,11 +106,26 @@ class MainWindow(QMainWindow):
 
     def manage_sensors(self):
         """Открыть окно управления датчиками"""
-        QMessageBox.information(
-            self,
-            "Управление датчиками",
-            "Функция управления датчиками будет добавлена в следующей версии"
-        )
+        from gui.dialogs.sensor_dialog import SensorManagerDialog
+        dialog = SensorManagerDialog(self.db_manager, self)
+        dialog.exec()
+
+    # В core/database.py добавить:
+
+    def get_sensor_readings(self, sensor_id, limit=100):
+        """Получить показания конкретного датчика"""
+        try:
+            query = """
+                SELECT * FROM Sensor_Readings 
+                WHERE ID_Sensor = ? 
+                ORDER BY Timestamp_Sensor DESC 
+                LIMIT ?
+            """
+            self.cursor.execute(query, (sensor_id, limit))
+            return self.cursor.fetchall()
+        except sqlite3.Error as e:
+            print(f"[DB ERROR] Ошибка получения показаний датчика: {e}")
+            return []
 
     def show_about(self):
         """Показать окно 'О программе'"""
@@ -128,19 +144,12 @@ class MainWindow(QMainWindow):
         self.close()
 
     def closeEvent(self, event):
-        """
-        При закрытии окна ставим пользователю статус 'Отключён'
-        и корректно завершаем соединение.
-        """
+        """Минимальная версия"""
         try:
             user_id = self.user_data.get("id")
             if user_id:
                 self.db_manager.update_user_status_by_id(user_id, "Отключён")
-        except Exception as e:
-            print(f"[ОШИБКА] Не удалось сбросить статус пользователя при выходе: {e}")
-        finally:
-            try:
-                self.db_manager.close()
-            except Exception as e:
-                print(f"[ОШИБКА] Не удалось закрыть соединение: {e}")
+        except:
+            pass  # Игнорируем все ошибки при выходе
+
         event.accept()

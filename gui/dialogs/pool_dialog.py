@@ -1,8 +1,11 @@
-from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QFormLayout,
-                             QLineEdit, QComboBox, QDoubleSpinBox, QDateEdit,
-                             QPushButton, QTableWidget, QTableWidgetItem,
-                             QHeaderView, QMessageBox, QTabWidget, QWidget)
-from PyQt6.QtCore import QDate
+from PyQt6.QtWidgets import (
+    QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
+    QTableWidget, QTableWidgetItem, QHeaderView, QMessageBox,
+    QGroupBox, QFormLayout, QLineEdit, QComboBox, QDateEdit,
+    QDialogButtonBox
+)
+from PyQt6.QtCore import Qt, QDate
+from datetime import datetime
 
 
 class PoolManagerDialog(QDialog):
@@ -11,159 +14,245 @@ class PoolManagerDialog(QDialog):
         self.db_manager = db_manager
         self.setWindowTitle("Управление бассейнами")
         self.setModal(True)
-        self.resize(600, 400)
+        self.setMinimumSize(800, 600)
         self.init_ui()
         self.load_pools()
 
     def init_ui(self):
-        layout = QVBoxLayout(self)
+        layout = QVBoxLayout()
 
-        # Вкладки
-        tabs = QTabWidget()
+        # Заголовок
+        title = QLabel("Управление бассейнами")
+        title.setObjectName("dialogTitle")
+        layout.addWidget(title)
 
-        # Вкладка списка бассейнов
-        list_tab = QWidget()
-        list_layout = QVBoxLayout(list_tab)
+        # Форма добавления/редактирования
+        form_group = QGroupBox("Добавить/Редактировать бассейн")
+        form_layout = QFormLayout()
 
-        # Таблица бассейнов
-        self.pools_table = QTableWidget()
-        self.pools_table.setColumnCount(6)
-        self.pools_table.setHorizontalHeaderLabels([
-            "Название", "Объем", "Тип рыбы", "Количество", "Дата зарыбления", "Статус"
-        ])
-        self.pools_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.name_input = QLineEdit()
+        self.name_input.setPlaceholderText("Название бассейна")
+        form_layout.addRow("Название:", self.name_input)
 
-        list_layout.addWidget(self.pools_table)
+        self.volume_input = QLineEdit()
+        self.volume_input.setPlaceholderText("Объем в м³")
+        form_layout.addRow("Объем:", self.volume_input)
 
-        # Кнопки управления
-        btn_layout = QHBoxLayout()
-        self.add_btn = QPushButton("Добавить")
-        self.edit_btn = QPushButton("Редактировать")
-        self.delete_btn = QPushButton("Удалить")
+        self.fish_type_input = QLineEdit()
+        self.fish_type_input.setPlaceholderText("Вид рыбы")
+        form_layout.addRow("Тип рыбы:", self.fish_type_input)
 
-        self.add_btn.clicked.connect(self.add_pool)
-        self.edit_btn.clicked.connect(self.edit_pool)
-        self.delete_btn.clicked.connect(self.delete_pool)
-
-        btn_layout.addWidget(self.add_btn)
-        btn_layout.addWidget(self.edit_btn)
-        btn_layout.addWidget(self.delete_btn)
-        btn_layout.addStretch()
-
-        list_layout.addLayout(btn_layout)
-
-        # Вкладка добавления/редактирования
-        self.edit_tab = QWidget()
-        self.setup_edit_tab()
-
-        tabs.addTab(list_tab, "Список бассейнов")
-        tabs.addTab(self.edit_tab, "Добавить/Редактировать")
-
-        layout.addWidget(tabs)
-
-        # Кнопки диалога
-        dialog_btn_layout = QHBoxLayout()
-        self.close_btn = QPushButton("Закрыть")
-        self.close_btn.clicked.connect(self.accept)
-
-        dialog_btn_layout.addStretch()
-        dialog_btn_layout.addWidget(self.close_btn)
-
-        layout.addLayout(dialog_btn_layout)
-
-    def setup_edit_tab(self):
-        layout = QFormLayout(self.edit_tab)
-
-        self.name_edit = QLineEdit()
-        self.volume_spin = QDoubleSpinBox()
-        self.volume_spin.setRange(1, 1000)
-        self.volume_spin.setSuffix(" м³")
-
-        self.fish_type_combo = QComboBox()
-        self.fish_type_combo.addItems(["Форель", "Осетр", "Карп", "Тиляпия", "Сом"])
-
-        self.fish_count_spin = QSpinBox()
-        self.fish_count_spin.setRange(0, 100000)
+        self.fish_count_input = QLineEdit()
+        self.fish_count_input.setPlaceholderText("Количество особей")
+        form_layout.addRow("Количество:", self.fish_count_input)
 
         self.stocking_date = QDateEdit()
         self.stocking_date.setDate(QDate.currentDate())
         self.stocking_date.setCalendarPopup(True)
+        form_layout.addRow("Дата зарыбления:", self.stocking_date)
 
         self.status_combo = QComboBox()
-        self.status_combo.addItems(["активен", "на обслуживании", "закрыт"])
+        self.status_combo.addItems(["Активен", "На обслуживании"])
+        form_layout.addRow("Статус:", self.status_combo)
 
-        self.save_btn = QPushButton("Сохранить")
-        self.save_btn.clicked.connect(self.save_pool)
+        # Кнопки формы
+        form_buttons_layout = QHBoxLayout()
+        self.add_btn = QPushButton("Добавить")
+        self.add_btn.clicked.connect(self.add_pool)
 
-        layout.addRow("Название:", self.name_edit)
-        layout.addRow("Объем:", self.volume_spin)
-        layout.addRow("Тип рыбы:", self.fish_type_combo)
-        layout.addRow("Количество рыбы:", self.fish_count_spin)
-        layout.addRow("Дата зарыбления:", self.stocking_date)
-        layout.addRow("Статус:", self.status_combo)
-        layout.addRow(self.save_btn)
+        self.update_btn = QPushButton("Обновить")
+        self.update_btn.clicked.connect(self.update_pool)
+        self.update_btn.setEnabled(False)
+
+        self.clear_btn = QPushButton("Очистить")
+        self.clear_btn.clicked.connect(self.clear_form)
+
+        form_buttons_layout.addWidget(self.add_btn)
+        form_buttons_layout.addWidget(self.update_btn)
+        form_buttons_layout.addWidget(self.clear_btn)
+        form_buttons_layout.addStretch()
+
+        form_layout.addRow(form_buttons_layout)
+
+        form_group.setLayout(form_layout)
+        layout.addWidget(form_group)
+
+        # Таблица бассейнов
+        table_group = QGroupBox("Список бассейнов")
+        table_layout = QVBoxLayout()
+
+        self.pools_table = QTableWidget()
+        self.pools_table.setColumnCount(7)
+        self.pools_table.setHorizontalHeaderLabels([
+            "ID", "Название", "Объем", "Тип рыбы", "Количество", "Дата зарыбления", "Статус"
+        ])
+        self.pools_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.pools_table.cellDoubleClicked.connect(self.edit_pool)
+        table_layout.addWidget(self.pools_table)
+
+        # Кнопки управления таблицей
+        table_buttons_layout = QHBoxLayout()
+        self.refresh_btn = QPushButton("Обновить")
+        self.refresh_btn.clicked.connect(self.load_pools)
+
+        self.delete_btn = QPushButton("Удалить")
+        self.delete_btn.clicked.connect(self.delete_pool)
+
+        table_buttons_layout.addWidget(self.refresh_btn)
+        table_buttons_layout.addWidget(self.delete_btn)
+        table_buttons_layout.addStretch()
+
+        table_layout.addLayout(table_buttons_layout)
+        table_group.setLayout(table_layout)
+        layout.addWidget(table_group)
+
+        # Кнопки диалога
+        button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
+        button_box.rejected.connect(self.reject)
+        layout.addWidget(button_box)
+
+        self.setLayout(layout)
+        self.current_pool_id = None
 
     def load_pools(self):
         """Загрузка списка бассейнов"""
-        # Демо-данные
-        pools = [
-            ("Бассейн 1", "50 м³", "Форель", "5000", "2024-01-10", "активен"),
-            ("Бассейн 2", "75 м³", "Осетр", "3000", "2024-01-15", "активен"),
-            ("Бассейн 3", "60 м³", "Карп", "8000", "2024-01-20", "на обслуживании"),
-        ]
+        try:
+            pools = self.db_manager.get_all_pools()
+            self.pools_table.setRowCount(len(pools))
 
-        self.pools_table.setRowCount(len(pools))
-        for row, (name, volume, fish_type, count, date, status) in enumerate(pools):
-            self.pools_table.setItem(row, 0, QTableWidgetItem(name))
-            self.pools_table.setItem(row, 1, QTableWidgetItem(volume))
-            self.pools_table.setItem(row, 2, QTableWidgetItem(fish_type))
-            self.pools_table.setItem(row, 3, QTableWidgetItem(count))
-            self.pools_table.setItem(row, 4, QTableWidgetItem(date))
-            self.pools_table.setItem(row, 5, QTableWidgetItem(status))
+            for row, pool in enumerate(pools):
+                self.pools_table.setItem(row, 0, QTableWidgetItem(str(pool['ID_Pool'])))
+                self.pools_table.setItem(row, 1, QTableWidgetItem(pool['Name_Pool']))
+                self.pools_table.setItem(row, 2, QTableWidgetItem(str(pool['Volume_Pool'])))
+                self.pools_table.setItem(row, 3, QTableWidgetItem(pool['Fish_Type']))
+                self.pools_table.setItem(row, 4, QTableWidgetItem(str(pool['Fish_Count'])))
+                self.pools_table.setItem(row, 5, QTableWidgetItem(pool['Stocking_Date']))
+                self.pools_table.setItem(row, 6, QTableWidgetItem(pool['Status_Pool']))
+
+        except Exception as e:
+            QMessageBox.critical(self, "Ошибка", f"Ошибка загрузки бассейнов: {e}")
 
     def add_pool(self):
         """Добавление нового бассейна"""
-        self.name_edit.clear()
-        self.volume_spin.setValue(50)
-        self.fish_count_spin.setValue(1000)
-        self.stocking_date.setDate(QDate.currentDate())
-        self.status_combo.setCurrentText("активен")
+        try:
+            name = self.name_input.text().strip()
+            volume = self.volume_input.text().strip()
+            fish_type = self.fish_type_input.text().strip()
+            fish_count = self.fish_count_input.text().strip()
+            stocking_date = self.stocking_date.date().toString("yyyy-MM-dd")
+            status = self.status_combo.currentText()
 
-    def edit_pool(self):
-        """Редактирование выбранного бассейна"""
-        current_row = self.pools_table.currentRow()
-        if current_row < 0:
-            QMessageBox.warning(self, "Ошибка", "Выберите бассейн для редактирования")
-            return
+            if not all([name, volume, fish_type, fish_count]):
+                QMessageBox.warning(self, "Ошибка", "Заполните все поля!")
+                return
 
-        # Заполнение формы данными выбранного бассейна
-        name = self.pools_table.item(current_row, 0).text()
-        # ... заполнение остальных полей
+            success = self.db_manager.add_pool(
+                name, float(volume), fish_type, int(fish_count), stocking_date, status
+            )
+
+            if success:
+                QMessageBox.information(self, "Успех", "Бассейн добавлен!")
+                self.clear_form()
+                self.load_pools()
+            else:
+                QMessageBox.critical(self, "Ошибка", "Не удалось добавить бассейн")
+
+        except ValueError:
+            QMessageBox.warning(self, "Ошибка", "Проверьте правильность числовых значений!")
+        except Exception as e:
+            QMessageBox.critical(self, "Ошибка", f"Ошибка добавления: {e}")
+
+    def edit_pool(self, row, column):
+        """Редактирование бассейна по двойному клику"""
+        try:
+            pool_id = int(self.pools_table.item(row, 0).text())
+            pool = self.db_manager.get_pool_by_id(pool_id)
+
+            if pool:
+                self.current_pool_id = pool_id
+                self.name_input.setText(pool['Name_Pool'])
+                self.volume_input.setText(str(pool['Volume_Pool']))
+                self.fish_type_input.setText(pool['Fish_Type'])
+                self.fish_count_input.setText(str(pool['Fish_Count']))
+                self.stocking_date.setDate(QDate.fromString(pool['Stocking_Date'], "yyyy-MM-dd"))
+                self.status_combo.setCurrentText(pool['Status_Pool'])
+
+                self.add_btn.setEnabled(False)
+                self.update_btn.setEnabled(True)
+
+        except Exception as e:
+            print(f"Ошибка редактирования: {e}")
+
+    def update_pool(self):
+        """Обновление бассейна"""
+        try:
+            if not self.current_pool_id:
+                return
+
+            name = self.name_input.text().strip()
+            volume = self.volume_input.text().strip()
+            fish_type = self.fish_type_input.text().strip()
+            fish_count = self.fish_count_input.text().strip()
+            stocking_date = self.stocking_date.date().toString("yyyy-MM-dd")
+            status = self.status_combo.currentText()
+
+            if not all([name, volume, fish_type, fish_count]):
+                QMessageBox.warning(self, "Ошибка", "Заполните все поля!")
+                return
+
+            success = self.db_manager.update_pool(
+                self.current_pool_id, name, float(volume), fish_type,
+                int(fish_count), stocking_date, status
+            )
+
+            if success:
+                QMessageBox.information(self, "Успех", "Бассейн обновлен!")
+                self.clear_form()
+                self.load_pools()
+            else:
+                QMessageBox.critical(self, "Ошибка", "Не удалось обновить бассейн")
+
+        except Exception as e:
+            QMessageBox.critical(self, "Ошибка", f"Ошибка обновления: {e}")
 
     def delete_pool(self):
-        """Удаление бассейна"""
-        current_row = self.pools_table.currentRow()
-        if current_row < 0:
-            QMessageBox.warning(self, "Ошибка", "Выберите бассейн для удаления")
-            return
+        """Удаление выбранного бассейна"""
+        try:
+            current_row = self.pools_table.currentRow()
+            if current_row < 0:
+                QMessageBox.warning(self, "Ошибка", "Выберите бассейн для удаления!")
+                return
 
-        reply = QMessageBox.question(
-            self, "Подтверждение",
-            "Вы уверены, что хотите удалить выбранный бассейн?",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
-        )
+            pool_id = int(self.pools_table.item(current_row, 0).text())
+            pool_name = self.pools_table.item(current_row, 1).text()
 
-        if reply == QMessageBox.StandardButton.Yes:
-            # Логика удаления из БД
-            self.pools_table.removeRow(current_row)
+            reply = QMessageBox.question(
+                self,
+                "Подтверждение",
+                f"Вы уверены, что хотите удалить бассейн '{pool_name}'?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            )
 
-    def save_pool(self):
-        """Сохранение бассейна"""
-        name = self.name_edit.text().strip()
-        if not name:
-            QMessageBox.warning(self, "Ошибка", "Введите название бассейна")
-            return
+            if reply == QMessageBox.StandardButton.Yes:
+                success = self.db_manager.delete_pool(pool_id)
+                if success:
+                    QMessageBox.information(self, "Успех", "Бассейн удален!")
+                    self.load_pools()
+                else:
+                    QMessageBox.critical(self, "Ошибка", "Не удалось удалить бассейн")
 
-        # Логика сохранения в БД
-        QMessageBox.information(self, "Успех", "Бассейн сохранен")
-        self.load_pools()  # Обновление списка
+        except Exception as e:
+            QMessageBox.critical(self, "Ошибка", f"Ошибка удаления: {e}")
+
+    def clear_form(self):
+        """Очистка формы"""
+        self.current_pool_id = None
+        self.name_input.clear()
+        self.volume_input.clear()
+        self.fish_type_input.clear()
+        self.fish_count_input.clear()
+        self.stocking_date.setDate(QDate.currentDate())
+        self.status_combo.setCurrentIndex(0)
+
+        self.add_btn.setEnabled(True)
+        self.update_btn.setEnabled(False)

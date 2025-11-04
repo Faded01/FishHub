@@ -1,8 +1,9 @@
-from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout,
-                             QTableWidget, QTableWidgetItem, QGroupBox,
-                             QPushButton, QHeaderView, QLabel)
-from PyQt6.QtCore import Qt
-import random
+from PyQt6.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
+    QTableWidget, QTableWidgetItem, QHeaderView, QMessageBox,
+    QGroupBox, QGridLayout
+)
+from PyQt6.QtCore import Qt, QTimer
 from datetime import datetime
 
 
@@ -11,41 +12,44 @@ class MonitoringWidget(QWidget):
         super().__init__()
         self.db_manager = db_manager
         self.init_ui()
+        self.setup_timer()
         self.refresh_data()
 
     def init_ui(self):
-        layout = QVBoxLayout(self)
+        layout = QVBoxLayout()
 
         # Заголовок
         title = QLabel("Мониторинг параметров водной среды")
-        title.setStyleSheet("font-size: 16pt; font-weight: bold;")
+        title.setObjectName("widgetTitle")
         layout.addWidget(title)
 
-        # Группа текущих показаний
+        # Текущие показания
         current_group = QGroupBox("Текущие показания")
-        current_layout = QHBoxLayout()
+        current_layout = QGridLayout()
 
         self.temp_label = QLabel("Температура: --°C")
         self.oxygen_label = QLabel("Кислород: -- мг/л")
         self.ph_label = QLabel("pH: --")
 
-        current_layout.addWidget(self.temp_label)
-        current_layout.addWidget(self.oxygen_label)
-        current_layout.addWidget(self.ph_label)
+        current_layout.addWidget(self.temp_label, 0, 0)
+        current_layout.addWidget(self.oxygen_label, 0, 1)
+        current_layout.addWidget(self.ph_label, 0, 2)
 
         current_group.setLayout(current_layout)
         layout.addWidget(current_group)
 
-        # Таблица истории
+        # История показаний
         history_group = QGroupBox("История показаний")
         history_layout = QVBoxLayout()
 
-        self.table = QTableWidget()
-        self.table.setColumnCount(4)
-        self.table.setHorizontalHeaderLabels(["Время", "Параметр", "Значение", "Статус"])
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.readings_table = QTableWidget()
+        self.readings_table.setColumnCount(5)
+        self.readings_table.setHorizontalHeaderLabels([
+            "Время", "Бассейн", "Параметр", "Значение", "Статус"
+        ])
+        self.readings_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        history_layout.addWidget(self.readings_table)
 
-        history_layout.addWidget(self.table)
         history_group.setLayout(history_layout)
         layout.addWidget(history_group)
 
@@ -62,41 +66,87 @@ class MonitoringWidget(QWidget):
         button_layout.addStretch()
 
         layout.addLayout(button_layout)
+        self.setLayout(layout)
+
+    def setup_timer(self):
+        """Настройка автообновления каждые 30 секунд"""
+        self.update_timer = QTimer()
+        self.update_timer.timeout.connect(self.refresh_data)
+        self.update_timer.start(30000)
 
     def refresh_data(self):
         """Обновление данных мониторинга"""
-        # Здесь будет реальная логика получения данных из БД
-        # Пока используем демо-данные
-        self.update_current_readings()
-        self.update_history_table()
+        try:
+            # Получаем последние показания
+            readings = self.db_manager.get_latest_sensor_readings()
 
-    def update_current_readings(self):
-        """Обновление текущих показаний"""
-        temp = random.uniform(18.0, 22.0)
-        oxygen = random.uniform(5.0, 8.0)
-        ph = random.uniform(6.5, 7.5)
+            # Обновляем текущие показания (последние для каждого типа датчика)
+            current_temp = None
+            current_oxygen = None
+            current_ph = None
 
-        self.temp_label.setText(f"Температура: {temp:.1f}°C")
-        self.oxygen_label.setText(f"Кислород: {oxygen:.1f} мг/л")
-        self.ph_label.setText(f"pH: {ph:.1f}")
+            for reading in readings:
+                sensor_type = reading['Type_Sensor']
+                value = reading['Value_Sensor']
 
-    def update_history_table(self):
-        """Обновление таблицы истории"""
-        # Демо-данные
-        data = [
-            ("10:00:00", "Температура", "20.5°C", "Норма"),
-            ("10:05:00", "Кислород", "6.8 мг/л", "Норма"),
-            ("10:10:00", "pH", "7.2", "Норма"),
-        ]
+                if sensor_type == 'Температура' and current_temp is None:
+                    current_temp = value
+                    self.temp_label.setText(f"Температура: {value}°C")
+                elif sensor_type == 'Кислород' and current_oxygen is None:
+                    current_oxygen = value
+                    self.oxygen_label.setText(f"Кислород: {value} мг/л")
+                elif sensor_type == 'pH' and current_ph is None:
+                    current_ph = value
+                    self.ph_label.setText(f"pH: {value}")
 
-        self.table.setRowCount(len(data))
-        for row, (time, param, value, status) in enumerate(data):
-            self.table.setItem(row, 0, QTableWidgetItem(time))
-            self.table.setItem(row, 1, QTableWidgetItem(param))
-            self.table.setItem(row, 2, QTableWidgetItem(value))
-            self.table.setItem(row, 3, QTableWidgetItem(status))
+            # Заполняем таблицу истории
+            self.readings_table.setRowCount(len(readings))
+            for row, reading in enumerate(readings):
+                time = reading['Timestamp_Sensor'][:16]  # Обрезаем до даты и времени
+                pool_id = reading['ID_Pool']
+                sensor_type = reading['Type_Sensor']
+                value = reading['Value_Sensor']
+                status = reading['Status_Readings']
+
+                # Получаем название бассейна
+                pool = self.db_manager.get_pool_by_id(pool_id)
+                pool_name = pool['Name_Pool'] if pool else f"Бассейн {pool_id}"
+
+                self.readings_table.setItem(row, 0, QTableWidgetItem(time))
+                self.readings_table.setItem(row, 1, QTableWidgetItem(pool_name))
+                self.readings_table.setItem(row, 2, QTableWidgetItem(sensor_type))
+                self.readings_table.setItem(row, 3, QTableWidgetItem(str(value)))
+                self.readings_table.setItem(row, 4, QTableWidgetItem(status))
+
+        except Exception as e:
+            print(f"Ошибка обновления мониторинга: {e}")
 
     def simulate_data(self):
-        """Симуляция новых данных"""
-        # Логика добавления случайных данных в БД
-        self.refresh_data()
+        """Симуляция новых данных для тестирования"""
+        try:
+            # Получаем все датчики
+            pools = self.db_manager.get_all_pools()
+            for pool in pools:
+                sensors = self.db_manager.get_sensors_by_pool(pool['ID_Pool'])
+                for sensor in sensors:
+                    # Генерируем случайные значения в зависимости от типа датчика
+                    sensor_type = sensor['Type_Sensor']
+                    if sensor_type == 'Температура':
+                        value = round(18 + (22 - 18) * (hash(str(datetime.now())) % 100 / 100), 1)
+                        status = "Норма" if 19 <= value <= 21 else "Предупреждение"
+                    elif sensor_type == 'Кислород':
+                        value = round(6 + (8 - 6) * (hash(str(datetime.now())) % 100 / 100), 1)
+                        status = "Норма" if value >= 6.5 else "Критично"
+                    elif sensor_type == 'pH':
+                        value = round(6.8 + (7.5 - 6.8) * (hash(str(datetime.now())) % 100 / 100), 1)
+                        status = "Норма" if 6.5 <= value <= 7.5 else "Предупреждение"
+                    else:
+                        continue
+
+                    self.db_manager.add_sensor_reading(sensor['ID_Sensor'], value, status)
+
+            QMessageBox.information(self, "Симуляция", "Тестовые данные добавлены!")
+            self.refresh_data()
+
+        except Exception as e:
+            QMessageBox.critical(self, "Ошибка", f"Ошибка симуляции: {e}")
