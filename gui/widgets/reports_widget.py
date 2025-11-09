@@ -1,24 +1,26 @@
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QTableWidget, QTableWidgetItem, QHeaderView, QMessageBox,
-    QGroupBox, QFormLayout, QComboBox, QDateEdit, QTextEdit
+    QGroupBox, QFormLayout, QComboBox, QDateEdit
 )
 from PyQt6.QtCore import Qt, QDate
-from datetime import datetime, timedelta
-import matplotlib.pyplot as plt
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.figure import Figure
+from core.excel_exporter import ExcelExporter
+from gui.dialogs.report_dialog import ReportDialog
 
 
 class ReportsWidget(QWidget):
-    def __init__(self, db_manager):
+    def __init__(self, db_manager, user_data=None):
         super().__init__()
         self.db_manager = db_manager
+        self.user_data = user_data
+        self.current_report_data = []
         self.init_ui()
-        self.refresh_data()
+        self.load_report_types()
+        self.load_report_data()
 
     def init_ui(self):
         layout = QVBoxLayout()
+        layout.setSpacing(10)
 
         # Заголовок
         title = QLabel("Отчетность и аналитика")
@@ -31,23 +33,22 @@ class ReportsWidget(QWidget):
 
         # Тип отчета
         self.report_type_combo = QComboBox()
-        self.report_type_combo.addItems([
-            "Суточный отчет",
-            "Аналитический",
-            "Статистический",
-            "Технологический"
-        ])
+        self.report_type_combo.currentTextChanged.connect(self.load_report_data)
         params_layout.addRow("Тип отчета:", self.report_type_combo)
 
         # Период
         dates_layout = QHBoxLayout()
         self.start_date = QDateEdit()
-        self.start_date.setDate(QDate.currentDate().addDays(-7))
+        self.start_date.setDate(QDate.currentDate().addMonths(-1))
         self.start_date.setCalendarPopup(True)
+        self.start_date.setMinimumWidth(120)
+        self.start_date.dateChanged.connect(self.load_report_data)
 
         self.end_date = QDateEdit()
         self.end_date.setDate(QDate.currentDate())
         self.end_date.setCalendarPopup(True)
+        self.end_date.setMinimumWidth(120)
+        self.end_date.dateChanged.connect(self.load_report_data)
 
         dates_layout.addWidget(QLabel("С:"))
         dates_layout.addWidget(self.start_date)
@@ -57,132 +58,199 @@ class ReportsWidget(QWidget):
 
         params_layout.addRow("Период:", dates_layout)
 
-        # Кнопки генерации
+        # Кнопки управления
         buttons_layout = QHBoxLayout()
-        self.generate_btn = QPushButton("Сгенерировать отчет")
-        self.generate_btn.clicked.connect(self.generate_report)
+        self.export_btn = QPushButton("Экспорт в Excel")
+        self.export_btn.clicked.connect(self.export_report_to_excel)
 
-        self.export_btn = QPushButton("Экспорт в PDF")
-        self.export_btn.clicked.connect(self.export_to_pdf)
+        self.create_report_btn = QPushButton("Создать отчет")
+        self.create_report_btn.clicked.connect(self.create_new_report)
 
-        buttons_layout.addWidget(self.generate_btn)
         buttons_layout.addWidget(self.export_btn)
+        buttons_layout.addWidget(self.create_report_btn)
         buttons_layout.addStretch()
 
         params_layout.addRow(buttons_layout)
-
         params_group.setLayout(params_layout)
         layout.addWidget(params_group)
 
-        # Визуализация данных
-        viz_group = QGroupBox("Визуализация данных")
-        viz_layout = QVBoxLayout()
-
-        # График (заглушка - в реальном проекте нужно добавить matplotlib)
-        self.viz_label = QLabel("Здесь будет график...\n\nДля полноценной визуализации\nустановите matplotlib:")
-        self.viz_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.viz_label.setStyleSheet("background-color: #f8f9fa; padding: 40px; border: 1px dashed #ccc;")
-        viz_layout.addWidget(self.viz_label)
-
-        viz_group.setLayout(viz_layout)
-        layout.addWidget(viz_group)
-
-        # Данные отчета
-        data_group = QGroupBox("Данные отчета")
-        data_layout = QVBoxLayout()
+        # Таблица отчетов
+        table_group = QGroupBox("Список отчетов")
+        table_layout = QVBoxLayout()
 
         self.report_table = QTableWidget()
-        self.report_table.setColumnCount(5)
+        self.report_table.setMinimumHeight(400)
+        self.report_table.setColumnCount(8)
         self.report_table.setHorizontalHeaderLabels([
-            "Дата", "Параметр", "Значение", "Статус", "Бассейн"
+            "ID", "Тип отчета", "Бассейн", "Период", "Автор", "Дата создания", "Статус", "Действия"
         ])
-        self.report_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        data_layout.addWidget(self.report_table)
 
-        data_group.setLayout(data_layout)
-        layout.addWidget(data_group)
+        # Настройка таблицы
+        header = self.report_table.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(6, QHeaderView.ResizeMode.Stretch)
+        header.setSectionResizeMode(7, QHeaderView.ResizeMode.Fixed)
+        header.resizeSection(7, 80)
 
-        # Текстовый отчет
-        text_group = QGroupBox("Текстовый отчет")
-        text_layout = QVBoxLayout()
-
-        self.report_text = QTextEdit()
-        self.report_text.setPlaceholderText("Здесь будет сгенерированный отчет...")
-        self.report_text.setMaximumHeight(150)
-        text_layout.addWidget(self.report_text)
-
-        text_group.setLayout(text_layout)
-        layout.addWidget(text_group)
+        table_layout.addWidget(self.report_table)
+        table_group.setLayout(table_layout)
+        layout.addWidget(table_group)
 
         self.setLayout(layout)
 
-    def refresh_data(self):
-        """Обновление данных отчетов"""
+    def load_report_types(self):
+        """Загрузка типов отчетов"""
         try:
-            reports = self.db_manager.get_reports()
-            self.report_table.setRowCount(len(reports))
+            self.report_type_combo.clear()
+            self.report_type_combo.addItem("Все отчеты")
 
-            for row, report in enumerate(reports):
-                self.report_table.setItem(row, 0, QTableWidgetItem(report['Period_Start']))
-                self.report_table.setItem(row, 1, QTableWidgetItem(report['Report_Type']))
-                self.report_table.setItem(row, 2, QTableWidgetItem(str(report['ID_Report'])))
-                self.report_table.setItem(row, 3, QTableWidgetItem("Сформирован"))
-                self.report_table.setItem(row, 4, QTableWidgetItem(report['Name_Pool']))
-
+            report_types = self.db_manager.get_all_report_types()
+            for report_type in report_types:
+                self.report_type_combo.addItem(report_type)
         except Exception as e:
-            print(f"Ошибка обновления отчетов: {e}")
+            print(f"Ошибка загрузки типов отчетов: {e}")
 
-    def generate_report(self):
-        """Генерация отчета"""
+    def load_report_data(self):
+        """Загрузка данных отчетов"""
         try:
             report_type = self.report_type_combo.currentText()
+            if report_type == "Все отчеты":
+                report_type = None
+
             start_date = self.start_date.date().toString("yyyy-MM-dd")
             end_date = self.end_date.date().toString("yyyy-MM-dd")
 
-            # Получаем данные для отчета
-            reports = self.db_manager.get_reports(report_type, start_date, end_date)
-
-            # Формируем текстовый отчет
-            report_text = f"""
-ОТЧЕТ: {report_type}
-Период: с {start_date} по {end_date}
-Сформирован: {datetime.now().strftime('%Y-%m-%d %H:%M')}
-
-ОБЩАЯ ИНФОРМАЦИЯ:
-• Количество записей: {len(reports)}
-• Бассейны в отчете: {len(set(r['Name_Pool'] for r in reports))}
-
-ДАННЫЕ МОНИТОРИНГА:
-"""
-
-            # Добавляем данные мониторинга
-            readings = self.db_manager.get_latest_sensor_readings()
-            temp_readings = [r for r in readings if r['Type_Sensor'] == 'Температура']
-            oxygen_readings = [r for r in readings if r['Type_Sensor'] == 'Кислород']
-            ph_readings = [r for r in readings if r['Type_Sensor'] == 'pH']
-
-            report_text += f"""
-• Средняя температура: {sum(r['Value_Sensor'] for r in temp_readings) / len(temp_readings) if temp_readings else 0:.1f}°C
-• Средний кислород: {sum(r['Value_Sensor'] for r in oxygen_readings) / len(oxygen_readings) if oxygen_readings else 0:.1f} мг/л
-• Средний pH: {sum(r['Value_Sensor'] for r in ph_readings) / len(ph_readings) if ph_readings else 0:.1f}
-
-СТАТУС СИСТЕМЫ:
-• Все системы работают в штатном режиме
-• Критических отклонений не обнаружено
-"""
-
-            self.report_text.setPlainText(report_text)
-            self.refresh_data()
-
-            QMessageBox.information(self, "Успех", "Отчет сгенерирован!")
+            self.current_report_data = self.db_manager.get_reports_data(
+                report_type, start_date, end_date
+            )
+            self.update_report_table()
 
         except Exception as e:
-            QMessageBox.critical(self, "Ошибка", f"Ошибка генерации отчета: {e}")
+            print(f"Ошибка загрузки данных отчетов: {e}")
 
-    def export_to_pdf(self):
-        """Экспорт в PDF (заглушка)"""
-        QMessageBox.information(
-            self,
-            "Экспорт",
-            "Функция экспорта в PDF будет реализована в следующей версии"
-        )
+    def update_report_table(self):
+        """Обновление таблицы с отчетами"""
+        try:
+            self.report_table.setRowCount(len(self.current_report_data))
+
+            for row, report in enumerate(self.current_report_data):
+                # Заполняем данные таблицы
+                self.report_table.setItem(row, 0, QTableWidgetItem(str(report.get('ID_Report', ''))))
+                self.report_table.setItem(row, 1, QTableWidgetItem(report.get('Report_Type', '')))
+                self.report_table.setItem(row, 2, QTableWidgetItem(report.get('Name_Pool', 'Не указан')))
+
+                # Период
+                period_start = report.get('Period_Start', '')
+                period_end = report.get('Period_End', '')
+                period_text = f"{period_start} - {period_end}" if period_start and period_end else "Не указан"
+                self.report_table.setItem(row, 3, QTableWidgetItem(period_text))
+
+                # Автор
+                author_name = f"{report.get('Surname_User', '')} {report.get('Name_User', '')}".strip()
+                author_name = author_name if author_name else "Неизвестно"
+                self.report_table.setItem(row, 4, QTableWidgetItem(author_name))
+
+                # Дата создания
+                date_formation = report.get('Date_Formation', '')
+                date_str = str(date_formation)[:16] if date_formation else "Не указана"
+                self.report_table.setItem(row, 5, QTableWidgetItem(date_str))
+
+                # Статус
+                has_data = bool(report.get('Report_Data'))
+                status = "Заполнен" if has_data else "Пустой"
+                self.report_table.setItem(row, 6, QTableWidgetItem(status))
+
+                # Кнопка просмотра
+                view_btn = QPushButton("Просмотр")
+                view_btn.setFixedSize(70, 25)
+                view_btn.setStyleSheet("font-size: 10px; padding: 2px;")
+                view_btn.clicked.connect(lambda checked, r=row: self.view_report_details(r))
+                self.report_table.setCellWidget(row, 7, view_btn)
+
+            self.report_table.resizeColumnsToContents()
+
+        except Exception as e:
+            print(f"Ошибка обновления таблицы: {e}")
+
+    def view_report_details(self, row):
+        """Просмотр деталей отчета"""
+        try:
+            if row < len(self.current_report_data):
+                report = self.current_report_data[row]
+
+                details_text = f"""
+ТИП ОТЧЕТА: {report.get('Report_Type', 'Не указан')}
+
+ДАННЫЕ ОТЧЕТА:
+{report.get('Report_Data', 'Нет данных')}
+                """.strip()
+
+                QMessageBox.information(self, "Детали отчета", details_text)
+
+        except Exception as e:
+            print(f"Ошибка отображения деталей отчета: {e}")
+
+    def export_report_to_excel(self):
+        """Экспорт отчетов в Excel"""
+        try:
+            if not self.current_report_data:
+                QMessageBox.warning(self, "Ошибка", "Нет данных для экспорта!")
+                return
+
+            # Подготовка данных для экспорта
+            headers = ["ID", "Тип отчета", "Бассейн", "Период", "Автор", "Дата создания", "Статус"]
+            data_for_export = []
+
+            for report in self.current_report_data:
+                period_start = report.get('Period_Start', '')
+                period_end = report.get('Period_End', '')
+                period_text = f"{period_start} - {period_end}" if period_start and period_end else "Не указан"
+
+                author_name = f"{report.get('Surname_User', '')} {report.get('Name_User', '')}".strip()
+                author_name = author_name if author_name else "Неизвестно"
+
+                has_data = bool(report.get('Report_Data'))
+                status = "Заполнен" if has_data else "Пустой"
+
+                data_for_export.append([
+                    report.get('ID_Report', ''),
+                    report.get('Report_Type', ''),
+                    report.get('Name_Pool', 'Не указан'),
+                    period_text,
+                    author_name,
+                    report.get('Date_Formation', ''),
+                    status
+                ])
+
+            # Используем ExcelExporter для экспорта
+            success, message = ExcelExporter.export_table_to_excel(
+                data=data_for_export,
+                columns=headers,
+                sheet_name="Отчеты"
+            )
+
+            if success:
+                QMessageBox.information(self, "Успех", message)
+            else:
+                QMessageBox.critical(self, "Ошибка", message)
+
+        except Exception as e:
+            QMessageBox.critical(self, "Ошибка", f"Ошибка экспорта: {str(e)}")
+
+    def create_new_report(self):
+        """Создание нового отчета"""
+        try:
+            dialog = ReportDialog(self.db_manager, self.user_data, self)
+            result = dialog.exec()
+
+            if result:
+                QMessageBox.information(self, "Успех", "Отчет успешно создан!")
+                self.load_report_data()
+
+        except Exception as e:
+            QMessageBox.critical(self, "Ошибка", f"Ошибка создания отчета: {str(e)}")

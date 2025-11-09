@@ -4,6 +4,9 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt, pyqtSignal
 from core.database import DatabaseManager
+from gui.main_window import MainWindow
+from gui.database_editor import DatabaseEditorWindow  # Импортируем редактор БД
+
 
 class LoginWindow(QMainWindow):
     login_success = pyqtSignal(dict)
@@ -89,14 +92,28 @@ class LoginWindow(QMainWindow):
             QMessageBox.warning(self, "Ошибка входа", "Неверный логин или пароль!")
             return
 
-        # Если пользователь уже активен, блокируем повторный вход
-        if user.get('status') and str(user.get('status')).lower() == 'активен':
-            QMessageBox.warning(self, "Ошибка", "Пользователь уже авторизован в системе.")
-            return
-
-        # ИСПРАВЛЕНИЕ: используем правильное имя метода
+        # Обновляем статус пользователя
         self.db_manager.update_user_status_by_id(user['id'], "Активен")
         self.current_user = user
-        QMessageBox.information(self, "Вход выполнен", f"Добро пожаловать, {user.get('name')}!")
-        self.login_success.emit(user)
+
+        # Проверяем права администратора
+        if user.get('admin_permission', False):
+            QMessageBox.information(self, "Вход выполнен",
+                                    f"Добро пожаловать, {user.get('name')}!")
+            self.open_database_editor(user)
+        else:
+            QMessageBox.information(self, "Вход выполнен",
+                                    f"Добро пожаловать, {user.get('name')}!")
+            self.open_main_window(user)
+
         self.close()
+
+    def open_main_window(self, user_data):
+        """Открывает главное окно для обычных пользователей"""
+        self.main_window = MainWindow(self.db_manager, user_data)
+        self.main_window.show()
+
+    def open_database_editor(self, user_data):
+        """Открывает редактор базы данных для администраторов"""
+        self.database_editor = DatabaseEditorWindow(self.db_manager, user_data)
+        self.database_editor.show()

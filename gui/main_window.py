@@ -24,7 +24,7 @@ class MainWindow(QMainWindow):
 
     def init_ui(self):
         """Инициализация интерфейса"""
-        self.setWindowTitle(f"FishHub - {self.user_data['full_name']}")
+        self.setWindowTitle(f"FishHub | {self.user_data['full_name']}")
         self.setGeometry(100, 100, 1200, 800)
 
         # Меню
@@ -39,7 +39,7 @@ class MainWindow(QMainWindow):
         self.tab_widget = QTabWidget()
         self.monitoring_tab = MonitoringWidget(self.db_manager)
         self.feeding_tab = FeedingWidget(self.db_manager)
-        self.reports_tab = ReportsWidget(self.db_manager)
+        self.reports_tab = ReportsWidget(self.db_manager, self.user_data)
 
         self.tab_widget.addTab(self.monitoring_tab, "📊 Мониторинг")
         self.tab_widget.addTab(self.feeding_tab, "🐟 Кормление")
