@@ -65,11 +65,6 @@ class DatabaseEditorWindow(QWidget):
         top_panel_layout.addWidget(self.btn_export)
         top_panel_layout.addStretch()
 
-        # КНОПКА ВЫХОДА - ДОБАВЬТЕ ЭТУ СТРОЧКУ
-        self.btn_logout = QPushButton("Выйти в меню")
-        self.btn_logout.clicked.connect(self.logout)
-        self.btn_logout.setStyleSheet("background-color: #e74c3c; color: white;")
-        top_panel_layout.addWidget(self.btn_logout)
 
         # Таблица данных
         self.table_view = QTableView()
@@ -91,11 +86,20 @@ class DatabaseEditorWindow(QWidget):
         content_layout.addLayout(top_panel_layout)
         content_layout.addWidget(self.table_view)
         content_layout.addWidget(self.status_label)
+        main_layout.addWidget(content_widget)
+        self.setLayout(main_layout)
+
+        bottom_panel_layout = QHBoxLayout()
+        bottom_panel_layout.addStretch()
+        self.btn_logout = QPushButton("Выйти из учётной записи")
+        self.btn_logout.clicked.connect(self.logout)
+        bottom_panel_layout.addWidget(self.btn_logout)
+
+        content_layout.addLayout(bottom_panel_layout)
 
         main_layout.addWidget(content_widget)
         self.setLayout(main_layout)
 
-        # Загрузка первой таблицы
         if self.table_combo.count() > 0:
             self.load_table_data(self.table_combo.currentText())
 
@@ -512,10 +516,6 @@ class DatabaseEditorWindow(QWidget):
 
     def logout(self):
         try:
-            user_id = self.user_data.get("id")
-            if user_id:
-                self.db_manager.update_user_status_by_id(user_id, "Отключён")
-
             self.close()
 
             from gui.login_window import LoginWindow

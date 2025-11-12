@@ -5,8 +5,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, pyqtSignal
 from core.database import DatabaseManager
 from gui.main_window import MainWindow
-from gui.database_editor import DatabaseEditorWindow  # Импортируем редактор БД
-
+from gui.database_editor import DatabaseEditorWindow
 
 class LoginWindow(QMainWindow):
     login_success = pyqtSignal(dict)

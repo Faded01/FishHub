@@ -59,7 +59,12 @@ class MainWindow(QMainWindow):
         # Меню "Файл"
         file_menu = menubar.addMenu('Файл')
 
-        exit_action = QAction('Выход', self)
+        logout_action = QAction('Выход из учётной записи', self)
+        logout_action.setShortcut('Ctrl+L')
+        logout_action.triggered.connect(self.logout)
+        file_menu.addAction(logout_action)
+
+        exit_action = QAction('Выход из приложения', self)
         exit_action.setShortcut('Ctrl+Q')
         exit_action.triggered.connect(self.handle_exit)
         file_menu.addAction(exit_action)
@@ -138,6 +143,16 @@ class MainWindow(QMainWindow):
             "Программа предназначена для автоматизации процессов "
             "промышленного разведения рыбы"
         )
+
+    def logout(self):
+        try:
+            self.close()
+
+            from gui.login_window import LoginWindow
+            self.login_window = LoginWindow(self.db_manager)
+            self.login_window.show()
+        except Exception as e:
+            print(f"Ошибка при выходе: {e}")
 
     def handle_exit(self):
         """Обработка выхода через меню"""
