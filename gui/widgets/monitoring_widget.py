@@ -140,13 +140,19 @@ class MonitoringWidget(QWidget):
         self.refresh_data()
 
     def refresh_data(self):
+        """Оптимизированное обновление данных с ограничением записей"""
         try:
             sensor_type_filter = self.sensor_type_combo.currentText()
             if sensor_type_filter == "Все датчики":
                 sensor_type_filter = None
 
+            # Используем оптимизированный метод с лимитом записей
             if self.selected_pool_id:
-                readings = self.get_latest_readings_for_selected_pool(sensor_type_filter)
+                readings = self.db_manager.get_optimized_sensor_readings(self.selected_pool_id, limit=50)
+
+                # Фильтруем по типу датчика если нужно
+                if sensor_type_filter:
+                    readings = [r for r in readings if r['Type_Sensor'] == sensor_type_filter]
 
                 pool = self.db_manager.get_pool_by_id(self.selected_pool_id)
                 if pool:
@@ -155,14 +161,17 @@ class MonitoringWidget(QWidget):
                     self.volume_label.setText(f"Объем: {pool['Volume_Pool']} м³")
                     self.fish_type_label.setText(f"Тип рыбы: {pool['Fish_Type']}")
             else:
-                readings = self.get_readings_for_all_pools(sensor_type_filter)
+                # Для всех бассейнов берем меньше данных
+                readings = self.db_manager.get_optimized_sensor_readings(limit=30)
+                if sensor_type_filter:
+                    readings = [r for r in readings if r['Type_Sensor'] == sensor_type_filter]
+
                 self.status_label.setText("Статус: Все бассейны")
                 self.fish_count_label.setText("Рыба: --")
                 self.volume_label.setText("Объем: -- м³")
                 self.fish_type_label.setText("Тип рыбы: --")
 
             self.update_current_readings(readings)
-
             self.update_readings_table(readings)
 
         except Exception as e:
@@ -319,11 +328,15 @@ class MonitoringWidget(QWidget):
             print(f"Ошибка обновления метки {sensor_type}: {e}")
 
     def update_readings_table(self, readings):
-        """Обновление таблицы с показаниями"""
+        """Оптимизированное обновление таблицы"""
         try:
-            self.readings_table.setRowCount(len(readings))
+            # Ограничиваем количество отображаемых строк для производительности
+            display_limit = 100
+            display_readings = readings[:display_limit]
 
-            for row, reading in enumerate(readings):
+            self.readings_table.setRowCount(len(display_readings))
+
+            for row, reading in enumerate(display_readings):
                 time_str = reading['Timestamp_Sensor'][:16] if reading['Timestamp_Sensor'] else '--'
                 pool_id = reading['ID_Pool']
                 sensor_type = reading['Type_Sensor']
@@ -343,13 +356,18 @@ class MonitoringWidget(QWidget):
             # Показываем количество записей в заголовке
             history_group = self.findChild(QGroupBox, "История показаний")
             if history_group:
-                history_group.setTitle(f"История показаний (всего: {len(readings)})")
+                total_count = len(readings)
+                display_count = len(display_readings)
+                if total_count > display_count:
+                    history_group.setTitle(f"История показаний (показано: {display_count} из {total_count})")
+                else:
+                    history_group.setTitle(f"История показаний (всего: {total_count})")
 
         except Exception as e:
             print(f"Ошибка обновления таблицы: {e}")
 
     def setup_timer(self):
-        """Настройка автообновления каждые 30 секунд"""
+        """Настройка автообновления с увеличенным интервалом"""
         self.update_timer = QTimer()
         self.update_timer.timeout.connect(self.refresh_data)
-        self.update_timer.start(30000)
+        self.update_timer.start(15000)  # Увеличили с 5 до 15 секунд

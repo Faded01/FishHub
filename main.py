@@ -206,6 +206,8 @@ def main():
         print("[CSS] Стили не загружены, используется стандартный вид..")
 
     db_manager = DatabaseManager()
+
+    db_manager.create_indexes()
     login_window = LoginWindow(db_manager)
     login_window.show()
     return app.exec()

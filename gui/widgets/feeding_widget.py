@@ -123,13 +123,15 @@ class FeedingWidget(QWidget):
             )
 
     def refresh_data(self):
-        """Обновление данных кормления"""
+        """Оптимизированное обновление данных кормления"""
         try:
-            # История кормлений
+            # История кормлений с ограничением
             feedings = self.db_manager.get_feeding_history()
-            self.feeding_table.setRowCount(len(feedings))
+            display_feedings = feedings[:100]  # Ограничиваем показ 100 записями
 
-            for row, feeding in enumerate(feedings):
+            self.feeding_table.setRowCount(len(display_feedings))
+
+            for row, feeding in enumerate(display_feedings):
                 # Бассейн
                 self.feeding_table.setItem(row, 0, QTableWidgetItem(feeding['Name_Pool']))
 
@@ -144,7 +146,7 @@ class FeedingWidget(QWidget):
                 # Время
                 feeding_time = feeding['Feeding_Time']
                 if feeding_time and ' ' in feeding_time:
-                    time_str = feeding_time.split(' ')[1][:8]  # Берем время ЧЧ:ММ:СС
+                    time_str = feeding_time.split(' ')[1][:8]
                 else:
                     time_str = '--:--:--'
                 self.feeding_table.setItem(row, 3, QTableWidgetItem(time_str))
@@ -154,7 +156,7 @@ class FeedingWidget(QWidget):
 
                 # Дата
                 if feeding_time:
-                    date_str = feeding_time[:10]  # Берем дату ГГГГ-ММ-ДД
+                    date_str = feeding_time[:10]
                 else:
                     date_str = '--'
                 self.feeding_table.setItem(row, 5, QTableWidgetItem(date_str))

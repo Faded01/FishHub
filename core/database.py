@@ -609,3 +609,42 @@ class DatabaseManager:
         except sqlite3.Error as e:
             print(f"[DB ERROR] Ошибка получения списка таблиц: {e}")
             return []
+
+    def create_indexes(self):
+        """Создание индексов для ускорения работы БД"""
+        try:
+            indexes = [
+                "CREATE INDEX IF NOT EXISTS idx_sensor_readings_timestamp ON Sensor_Readings(Timestamp_Sensor DESC)",
+                "CREATE INDEX IF NOT EXISTS idx_sensor_readings_sensor_id ON Sensor_Readings(ID_Sensor)",
+                "CREATE INDEX IF NOT EXISTS idx_sensors_pool_id ON Sensors(ID_Pool)",
+                "CREATE INDEX IF NOT EXISTS idx_feedings_time ON Feedings(Feeding_Time DESC)",
+                "CREATE INDEX IF NOT EXISTS idx_pools_status ON Pools(Status_Pool)"
+            ]
+
+            for index_sql in indexes:
+                try:
+                    self.cursor.execute(index_sql)
+                except Exception as e:
+                    print(f"Index creation error for {index_sql}: {e}")
+
+            self.connection.commit()
+            print("[DB] Индексы созданы/обновлены")
+        except Exception as e:
+            print(f"[DB ERROR] Ошибка создания индексов: {e}")
+
+    def get_optimized_sensor_readings(self, pool_id=None, limit=50):
+        """Оптимизированный запрос показаний датчиков"""
+        try:
+            query = """
+                SELECT sr.*, s.Type_Sensor, s.ID_Pool 
+                FROM Sensor_Readings sr
+                JOIN Sensors s ON sr.ID_Sensor = s.ID_Sensor
+                WHERE (? IS NULL OR s.ID_Pool = ?)
+                ORDER BY sr.Timestamp_Sensor DESC 
+                LIMIT ?
+            """
+            self.cursor.execute(query, (pool_id, pool_id, limit))
+            return self.cursor.fetchall()
+        except Exception as e:
+            print(f"[DB ERROR] Ошибка оптимизированного запроса: {e}")
+            return []

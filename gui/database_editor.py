@@ -26,7 +26,7 @@ class DatabaseEditorWindow(QWidget):
             self.setWindowTitle(
                 f"Редактор базы данных — FishHub (Администратор: {self.user_data.get('full_name', 'Неизвестно')})")
 
-        self.setMinimumSize(1300, 800)  # Увеличил минимальный размер
+        self.setMinimumSize(1300, 800)
 
         # Основной layout
         main_layout = QVBoxLayout()
@@ -36,14 +36,15 @@ class DatabaseEditorWindow(QWidget):
         content_layout = QVBoxLayout(content_widget)
         content_layout.setContentsMargins(20, 20, 20, 20)
 
-        # Выбор таблицы
-        table_layout = QHBoxLayout()
-        table_layout.addWidget(QLabel("Выберите таблицу:"))
+        # Верхняя панель с кнопками
+        top_panel_layout = QHBoxLayout()
 
+        # Выбор таблицы
+        top_panel_layout.addWidget(QLabel("Выберите таблицу:"))
         self.table_combo = QComboBox()
         self.load_table_names()
         self.table_combo.currentTextChanged.connect(self.load_table_data)
-        table_layout.addWidget(self.table_combo)
+        top_panel_layout.addWidget(self.table_combo)
 
         # Кнопки управления
         self.btn_save = QPushButton("Сохранить изменения")
@@ -57,12 +58,18 @@ class DatabaseEditorWindow(QWidget):
         self.btn_export = QPushButton("Экспорт в Excel")
         self.btn_export.clicked.connect(self.export_to_excel)
 
-        table_layout.addWidget(self.btn_save)
-        table_layout.addWidget(self.btn_refresh)
-        table_layout.addWidget(self.btn_add_row)
-        table_layout.addWidget(self.btn_delete_row)
-        table_layout.addWidget(self.btn_export)
-        table_layout.addStretch()
+        top_panel_layout.addWidget(self.btn_save)
+        top_panel_layout.addWidget(self.btn_refresh)
+        top_panel_layout.addWidget(self.btn_add_row)
+        top_panel_layout.addWidget(self.btn_delete_row)
+        top_panel_layout.addWidget(self.btn_export)
+        top_panel_layout.addStretch()
+
+        # КНОПКА ВЫХОДА - ДОБАВЬТЕ ЭТУ СТРОЧКУ
+        self.btn_logout = QPushButton("Выйти в меню")
+        self.btn_logout.clicked.connect(self.logout)
+        self.btn_logout.setStyleSheet("background-color: #e74c3c; color: white;")
+        top_panel_layout.addWidget(self.btn_logout)
 
         # Таблица данных
         self.table_view = QTableView()
@@ -81,7 +88,7 @@ class DatabaseEditorWindow(QWidget):
         self.status_label = QLabel("Готов к работе")
 
         # Собираем layout
-        content_layout.addLayout(table_layout)
+        content_layout.addLayout(top_panel_layout)
         content_layout.addWidget(self.table_view)
         content_layout.addWidget(self.status_label)
 
@@ -99,7 +106,16 @@ class DatabaseEditorWindow(QWidget):
 
         self.current_table = table_name
         try:
+            # Для больших таблиц ограничиваем количество строк при первом показе
             data = self.db_manager.get_all_data(table_name)
+
+            # Если записей много, показываем предупреждение
+            if len(data) > 1000:
+                self.status_label.setText(
+                    f"Загружена таблица: {russian_table_name} | Записей: {len(data)} (рекомендуется использовать фильтры)")
+            else:
+                self.status_label.setText(f"Загружена таблица: {russian_table_name} | Записей: {len(data)}")
+
             russian_columns = self.get_russian_columns(table_name)
 
             self.model.clear()
@@ -115,10 +131,9 @@ class DatabaseEditorWindow(QWidget):
                 self.model.setHeaderData(i, Qt.Orientation.Horizontal, Qt.AlignmentFlag.AlignCenter,
                                          Qt.ItemDataRole.TextAlignmentRole)
 
-            for i in range(self.model.columnCount()):
+            # Автоподбор ширины только для видимых колонок
+            for i in range(min(self.model.columnCount(), 10)):  # Первые 10 колонок
                 self.table_view.setColumnWidth(i, 150)
-
-            self.status_label.setText(f"Загружена таблица: {russian_table_name} | Записей: {len(data)}")
 
         except Exception as e:
             self.show_error(f"Ошибка загрузки таблицы: {str(e)}")
@@ -463,7 +478,6 @@ class DatabaseEditorWindow(QWidget):
             self.show_error(f"Ошибка удаления: {str(e)}")
 
     def export_to_excel(self):
-        """Экспорт текущей таблицы в Excel"""
         try:
             table_name = self.table_combo.currentData()
             if not table_name:
@@ -496,16 +510,30 @@ class DatabaseEditorWindow(QWidget):
     def show_error(self, message):
         QMessageBox.critical(self, "Ошибка", message)
 
+    def logout(self):
+        try:
+            user_id = self.user_data.get("id")
+            if user_id:
+                self.db_manager.update_user_status_by_id(user_id, "Отключён")
+
+            self.close()
+
+            from gui.login_window import LoginWindow
+            self.login_window = LoginWindow(self.db_manager)
+            self.login_window.show()
+
+        except Exception as e:
+            print(f"Ошибка при выходе: {e}")
+
     def closeEvent(self, event):
-        """Обработчик закрытия окна"""
         try:
             user_id = self.user_data.get("id")
             if user_id:
                 self.db_manager.update_user_status_by_id(user_id, "Отключён")
         except Exception as e:
             print(f"[ОШИБКА] Не удалось сбросить статус пользователя при выходе: {e}")
+
         event.accept()
 
     def handle_exit(self):
-        """Обработка выхода"""
         self.close()
