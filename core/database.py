@@ -648,3 +648,5 @@ class DatabaseManager:
         except Exception as e:
             print(f"[DB ERROR] Ошибка оптимизированного запроса: {e}")
             return []
+
+
