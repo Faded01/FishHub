@@ -40,14 +40,12 @@ class LoginWindow(QMainWindow):
         subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
         card_layout.addWidget(subtitle)
 
-        # Login field
         login_label = QLabel("Логин")
         card_layout.addWidget(login_label)
         self.login_input = QLineEdit()
         self.login_input.setPlaceholderText("Введите логин")
         card_layout.addWidget(self.login_input)
 
-        # Password with show button
         pwd_label = QLabel("Пароль")
         card_layout.addWidget(pwd_label)
         pwd_row = QHBoxLayout()
@@ -64,7 +62,6 @@ class LoginWindow(QMainWindow):
         pwd_row.addWidget(eye_btn)
         card_layout.addLayout(pwd_row)
 
-        # Buttons
         btn_row = QHBoxLayout()
         self.login_button = QPushButton("Войти")
         self.login_button.clicked.connect(self.attempt_login)
@@ -92,11 +89,9 @@ class LoginWindow(QMainWindow):
             QMessageBox.warning(self, "Ошибка входа", "Неверный логин или пароль!")
             return
 
-        # Обновляем статус пользователя
         self.db_manager.update_user_status_by_id(user['id'], "Активен")
         self.current_user = user
 
-        # Проверяем права администратора
         if user.get('admin_permission', False):
             QMessageBox.information(self, "Вход выполнен",
                                     f"Добро пожаловать, {user.get('name')}!")
@@ -105,15 +100,12 @@ class LoginWindow(QMainWindow):
             QMessageBox.information(self, "Вход выполнен",
                                     f"Добро пожаловать, {user.get('name')}!")
             self.open_main_window(user)
-
         self.close()
 
     def open_main_window(self, user_data):
-        """Открывает главное окно для обычных пользователей"""
         self.main_window = MainWindow(self.db_manager, user_data)
         self.main_window.show()
 
     def open_database_editor(self, user_data):
-        """Открывает редактор базы данных для администраторов"""
         self.database_editor = DatabaseEditorWindow(self.db_manager, user_data)
         self.database_editor.show()

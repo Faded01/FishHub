@@ -4,10 +4,16 @@ from PyQt6.QtWidgets import (
     QGroupBox, QGridLayout, QComboBox
 )
 from PyQt6.QtCore import Qt, QTimer
-from datetime import datetime
 
 
 class MonitoringWidget(QWidget):
+    # Константы для единиц измерения
+    SENSOR_UNITS = {
+        'Температура': '°C',
+        'Кислород': ' мг/л',
+        'pH': ''
+    }
+
     def __init__(self, db_manager):
         super().__init__()
         self.db_manager = db_manager
@@ -34,19 +40,13 @@ class MonitoringWidget(QWidget):
 
         layout.addLayout(header_layout)
 
-        # Текущие показания по выбранному бассейну
-        current_group = QGroupBox("Текущие показания выбранного бассейна")
+        # Текущие показания
+        current_group = QGroupBox("Текущие показания")
         current_layout = QGridLayout()
 
         # Создаем метки для основных параметров
         self.param_labels = {}
-        parameters = [
-            ('Температура', '°C'),
-            ('Кислород', 'мг/л'),
-            ('pH', 'ед.')
-        ]
-
-        for i, (param, unit) in enumerate(parameters):
+        for i, (param, unit) in enumerate(self.SENSOR_UNITS.items()):
             label = QLabel(f"{param}: --{unit}")
             label.setObjectName("paramLabel")
             current_layout.addWidget(label, i // 2, i % 2)
@@ -140,18 +140,14 @@ class MonitoringWidget(QWidget):
         self.refresh_data()
 
     def refresh_data(self):
-        """Обновление данных мониторинга"""
         try:
             sensor_type_filter = self.sensor_type_combo.currentText()
             if sensor_type_filter == "Все датчики":
                 sensor_type_filter = None
 
-            # Получаем данные в зависимости от выбранного бассейна
             if self.selected_pool_id:
-                # Для конкретного бассейна - получаем ВСЕ данные
-                readings = self.get_readings_for_selected_pool(sensor_type_filter)
+                readings = self.get_latest_readings_for_selected_pool(sensor_type_filter)
 
-                # Обновляем информацию о бассейне
                 pool = self.db_manager.get_pool_by_id(self.selected_pool_id)
                 if pool:
                     self.status_label.setText(f"Статус: {pool['Status_Pool']}")
@@ -159,43 +155,37 @@ class MonitoringWidget(QWidget):
                     self.volume_label.setText(f"Объем: {pool['Volume_Pool']} м³")
                     self.fish_type_label.setText(f"Тип рыбы: {pool['Fish_Type']}")
             else:
-                # Для "Все бассейны" - получаем последние данные
                 readings = self.get_readings_for_all_pools(sensor_type_filter)
-                self.status_label.setText("Статус: Не выбран")
+                self.status_label.setText("Статус: Все бассейны")
                 self.fish_count_label.setText("Рыба: --")
                 self.volume_label.setText("Объем: -- м³")
                 self.fish_type_label.setText("Тип рыбы: --")
 
-            # Обновляем текущие показания
             self.update_current_readings(readings)
 
-            # Заполняем таблицу истории
             self.update_readings_table(readings)
 
         except Exception as e:
             print(f"Ошибка обновления мониторинга: {e}")
 
-    def get_readings_for_selected_pool(self, sensor_type_filter):
-        """Получение данных для выбранного бассейна"""
+    def get_latest_readings_for_selected_pool(self, sensor_type_filter):
+        """Получение ПОСЛЕДНИХ данных для выбранного бассейна"""
         try:
-            # Пробуем использовать новый метод
-            if hasattr(self.db_manager, 'get_all_sensor_readings_for_pool'):
-                return self.db_manager.get_all_sensor_readings_for_pool(
-                    self.selected_pool_id, sensor_type_filter
-                )
-            else:
-                # Если метода нет, используем старый с фильтрацией
-                readings = self.db_manager.get_latest_sensor_readings(self.selected_pool_id)
-                if sensor_type_filter:
-                    readings = [r for r in readings if r['Type_Sensor'] == sensor_type_filter]
-                return readings
+            # Получаем последние показания для конкретного бассейна
+            readings = self.db_manager.get_latest_sensor_readings(self.selected_pool_id)
+
+            if sensor_type_filter:
+                readings = [r for r in readings if r['Type_Sensor'] == sensor_type_filter]
+
+            return readings
         except Exception as e:
-            print(f"Ошибка получения данных для бассейна: {e}")
+            print(f"Ошибка получения последних данных для бассейна: {e}")
             return []
 
     def get_readings_for_all_pools(self, sensor_type_filter):
-        """Получение данных для всех бассейнов"""
+        """Получение данных для всех бассейнов (для усреднения)"""
         try:
+            # Для "Все бассейны" получаем последние данные каждого бассейна
             readings = self.db_manager.get_latest_sensor_readings()
             if sensor_type_filter:
                 readings = [r for r in readings if r['Type_Sensor'] == sensor_type_filter]
@@ -205,66 +195,128 @@ class MonitoringWidget(QWidget):
             return []
 
     def update_current_readings(self, readings):
-        """Обновление текущих показаний"""
+        """
+        Обновление текущих показаний
+        Для "Все бассейны" - средние значения, для конкретного - последние показания
+        """
         try:
             # Сбрасываем все метки
             for param in self.param_labels:
-                self.param_labels[param].setText(f"{param}: --")
+                unit = self.SENSOR_UNITS.get(param, '')
+                self.param_labels[param].setText(f"{param}: --{unit}")
 
             if not readings:
                 return
 
-            # Группируем показания по бассейнам и типам датчиков
-            pool_readings = {}
-            for reading in readings:
-                pool_id = reading['ID_Pool']
-                sensor_type = reading['Type_Sensor']
-
-                if pool_id not in pool_readings:
-                    pool_readings[pool_id] = {}
-
-                if sensor_type not in pool_readings[pool_id]:
-                    pool_readings[pool_id][sensor_type] = reading
-
-            # Для выбранного бассейна показываем его данные
-            if self.selected_pool_id and self.selected_pool_id in pool_readings:
-                for sensor_type, reading in pool_readings[self.selected_pool_id].items():
-                    if sensor_type in self.param_labels:
-                        self.update_param_label(sensor_type, reading)
-
-            # Для "Все бассейны" показываем данные первого бассейна с показаниями
-            elif not self.selected_pool_id and pool_readings:
-                first_pool_id = list(pool_readings.keys())[0]
-                for sensor_type, reading in pool_readings[first_pool_id].items():
-                    if sensor_type in self.param_labels:
-                        self.update_param_label(sensor_type, reading)
+            if self.selected_pool_id:
+                # Для конкретного бассейна - показываем ПОСЛЕДНИЕ показания
+                self.update_with_latest_readings(readings)
+            else:
+                # Для "Все бассейны" - показываем СРЕДНИЕ значения
+                self.update_with_average_readings(readings)
 
         except Exception as e:
             print(f"Ошибка обновления текущих показаний: {e}")
 
-    def update_param_label(self, sensor_type, reading):
-        """Обновление метки параметра"""
+    def update_with_latest_readings(self, readings):
+        """Обновление ПОСЛЕДНИМИ показаниями для конкретного бассейна"""
         try:
-            unit = self.get_unit_for_sensor(sensor_type)
-            value = reading['Value_Sensor']
+            # Группируем по типам датчиков и берем последнее значение для каждого типа
+            latest_readings = {}
+
+            for reading in readings:
+                sensor_type = reading['Type_Sensor']
+                # Если это первый датчик такого типа или более новый, сохраняем
+                if sensor_type not in latest_readings:
+                    latest_readings[sensor_type] = reading
+                else:
+                    # Сравниваем время и берем более новое
+                    current_time = reading['Timestamp_Sensor']
+                    existing_time = latest_readings[sensor_type]['Timestamp_Sensor']
+                    if current_time > existing_time:
+                        latest_readings[sensor_type] = reading
+
+            # Обновляем метки
+            for sensor_type, reading in latest_readings.items():
+                if sensor_type in self.param_labels:
+                    self.update_param_label_with_single_value(sensor_type, reading)
+
+        except Exception as e:
+            print(f"Ошибка обновления последними показаниями: {e}")
+
+    def update_with_average_readings(self, readings):
+        """Обновление СРЕДНИМИ значениями для всех бассейнов"""
+        try:
+            # Группируем показания по типам датчиков для усреднения
+            sensor_groups = {}
+
+            for reading in readings:
+                sensor_type = reading['Type_Sensor']
+                if sensor_type not in sensor_groups:
+                    sensor_groups[sensor_type] = []
+                sensor_groups[sensor_type].append(reading)
+
+            # Обновляем метки со средними значениями
+            for sensor_type, readings_list in sensor_groups.items():
+                if sensor_type in self.param_labels:
+                    self.update_param_label_with_average(sensor_type, readings_list)
+
+        except Exception as e:
+            print(f"Ошибка обновления средними значениями: {e}")
+
+    def update_param_label_with_single_value(self, sensor_type, reading):
+        """Обновление метки одним значением (для конкретного бассейна)"""
+        try:
+            value = float(reading['Value_Sensor'])
             status = reading['Status_Readings']
+            unit = self.SENSOR_UNITS.get(sensor_type, '')
 
             # Форматируем цвет в зависимости от статуса
             color = "green" if status == "Норма" else "orange" if status == "Предупреждение" else "red"
+
+            # Показываем одно значение с временной меткой
+            time_str = reading['Timestamp_Sensor'][11:16] if reading['Timestamp_Sensor'] else ''
+
             self.param_labels[sensor_type].setText(
-                f"{sensor_type}: <span style='color: {color}; font-weight: bold;'>{value}{unit}</span>"
+                f"{sensor_type}: <span style='color: {color}; font-weight: bold;'>"
+                f"{value:.1f}{unit}</span> "
+                f"<span style='color: gray; font-size: 9pt;'>({time_str})</span>"
             )
         except Exception as e:
             print(f"Ошибка обновления метки {sensor_type}: {e}")
 
-    def get_unit_for_sensor(self, sensor_type):
-        """Возвращает единицы измерения для типа датчика"""
-        units = {
-            'Температура': '°C',
-            'Кислород': ' мг/л',
-            'pH': ''
-        }
-        return units.get(sensor_type, '')
+    def update_param_label_with_average(self, sensor_type, readings_list):
+        """Обновление метки средним значением (для всех бассейнов)"""
+        try:
+            if not readings_list:
+                return
+
+            # Вычисляем среднее значение
+            values = [float(r['Value_Sensor']) for r in readings_list]
+            avg_value = sum(values) / len(values)
+
+            # Определяем статус (берём наихудший)
+            statuses = [r['Status_Readings'] for r in readings_list]
+            if 'Критично' in statuses:
+                status = 'Критично'
+            elif 'Предупреждение' in statuses:
+                status = 'Предупреждение'
+            else:
+                status = 'Норма'
+
+            unit = self.SENSOR_UNITS.get(sensor_type, '')
+
+            # Форматируем цвет в зависимости от статуса
+            color = "green" if status == "Норма" else "orange" if status == "Предупреждение" else "red"
+
+            # Форматируем среднее значение
+            self.param_labels[sensor_type].setText(
+                f"{sensor_type}: <span style='color: {color}; font-weight: bold;'>"
+                f"{avg_value:.1f}{unit}</span> "
+                f"<span style='color: gray; font-size: 9pt;'>(среднее из {len(readings_list)})</span>"
+            )
+        except Exception as e:
+            print(f"Ошибка обновления метки {sensor_type}: {e}")
 
     def update_readings_table(self, readings):
         """Обновление таблицы с показаниями"""

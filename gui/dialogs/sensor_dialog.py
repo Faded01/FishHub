@@ -1,8 +1,7 @@
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QTableWidget, QTableWidgetItem, QHeaderView, QMessageBox,
-    QGroupBox, QFormLayout, QLineEdit, QComboBox, QDateEdit, QDoubleSpinBox,
-    QDialogButtonBox  # Добавляем импорт
+    QGroupBox, QFormLayout, QLineEdit, QComboBox, QDateEdit, QDoubleSpinBox
 )
 from PyQt6.QtCore import Qt, QDate
 from datetime import datetime
@@ -14,7 +13,7 @@ class SensorManagerDialog(QDialog):
         self.db_manager = db_manager
         self.setWindowTitle("Управление датчиками")
         self.setModal(True)
-        self.setMinimumSize(1100, 800)
+        self.setMinimumSize(1200, 800)  # Увеличил минимальный размер
         self.init_ui()
         self.load_sensors()
 
@@ -86,9 +85,9 @@ class SensorManagerDialog(QDialog):
         self.installation_date.setMinimumWidth(120)
         form_layout.addRow("Дата установки:", self.installation_date)
 
-        # Кнопки формы - добавляем одинаковые отступы
+        # Кнопки формы
         form_buttons_layout = QHBoxLayout()
-        form_buttons_layout.setSpacing(10)  # Устанавливаем одинаковые отступы
+        form_buttons_layout.setSpacing(10)
 
         self.add_btn = QPushButton("Добавить датчик")
         self.add_btn.clicked.connect(self.add_sensor)
@@ -124,30 +123,27 @@ class SensorManagerDialog(QDialog):
             "Диапазон до", "Дата установки", "Последние показания"
         ])
 
-        # Настраиваем умное растягивание колонок
-        header = self.sensors_table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)  # ID
-        header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)  # Бассейн
-        header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)  # Тип
-        header.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)  # Модель
-        header.setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)  # Диапазон от
-        header.setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)  # Диапазон до
-        header.setSectionResizeMode(6, QHeaderView.ResizeMode.ResizeToContents)  # Дата установки
-        header.setSectionResizeMode(7, QHeaderView.ResizeMode.Interactive)  # Последние показания
+        # ФИКСИРОВАННЫЕ ШИРИНЫ КОЛОНОК
+        self.sensors_table.setColumnWidth(0, 50)    # ID
+        self.sensors_table.setColumnWidth(1, 150)   # Бассейн
+        self.sensors_table.setColumnWidth(2, 120)   # Тип
+        self.sensors_table.setColumnWidth(3, 180)   # Модель
+        self.sensors_table.setColumnWidth(4, 100)   # Диапазон от
+        self.sensors_table.setColumnWidth(5, 100)   # Диапазон до
+        self.sensors_table.setColumnWidth(6, 120)   # Дата установки
+        self.sensors_table.setColumnWidth(7, 180)   # Последние показания
 
-        # Устанавливаем минимальные ширины для важных колонок
-        self.sensors_table.setColumnWidth(1, 150)  # Бассейн
-        self.sensors_table.setColumnWidth(2, 100)  # Тип
-        self.sensors_table.setColumnWidth(3, 120)  # Модель
-        self.sensors_table.setColumnWidth(7, 200)  # Последние показания
+        # Растягиваем последнюю колонку
+        header = self.sensors_table.horizontalHeader()
+        header.setSectionResizeMode(7, QHeaderView.ResizeMode.Stretch)
 
         # Подключаем обработчик выбора строки
         self.sensors_table.cellClicked.connect(self.on_cell_clicked)
         table_layout.addWidget(self.sensors_table)
 
-        # Кнопки управления таблицей - одинаковые отступы
+        # Кнопки управления таблицей
         table_buttons_layout = QHBoxLayout()
-        table_buttons_layout.setSpacing(10)  # Такие же отступы как в форме
+        table_buttons_layout.setSpacing(10)
 
         self.refresh_btn = QPushButton("Обновить список")
         self.refresh_btn.clicked.connect(self.load_sensors)
@@ -171,93 +167,25 @@ class SensorManagerDialog(QDialog):
         layout.addWidget(table_group)
 
         # Кнопки диалога
-        button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
-        button_box.rejected.connect(self.reject)
-        layout.addWidget(button_box)
+        close_button = QPushButton("Закрыть")
+        close_button.clicked.connect(self.reject)
+        button_layout = QHBoxLayout()
+        button_layout.addStretch()
+        button_layout.addWidget(close_button)
+        layout.addLayout(button_layout)
 
         self.setLayout(layout)
         self.current_sensor_id = None
 
-    def on_cell_clicked(self, row, column):
-        """Обработчик клика по любой ячейке строки"""
-        try:
-            sensor_id = int(self.sensors_table.item(row, 0).text())
-            self.edit_sensor_by_id(sensor_id)
-        except (ValueError, AttributeError) as e:
-            print(f"Ошибка при выборе строки: {e}")
-
-    def edit_sensor_by_id(self, sensor_id):
-        """Редактирование датчика по ID"""
-        try:
-            # Находим датчик в БД
-            pools = self.db_manager.get_all_pools()
-            sensor_data = None
-
-            for pool in pools:
-                sensors = self.db_manager.get_sensors_by_pool(pool['ID_Pool'])
-                for sensor in sensors:
-                    if sensor['ID_Sensor'] == sensor_id:
-                        sensor_data = sensor
-                        break
-                if sensor_data:
-                    break
-
-            if sensor_data:
-                self.current_sensor_id = sensor_id
-
-                # Устанавливаем бассейн
-                index = self.pool_combo.findData(sensor_data['ID_Pool'])
-                if index >= 0:
-                    self.pool_combo.setCurrentIndex(index)
-
-                # Устанавливаем тип датчика
-                index = self.type_combo.findText(sensor_data['Type_Sensor'])
-                if index >= 0:
-                    self.type_combo.setCurrentIndex(index)
-
-                # Устанавливаем модель с ограничением длины
-                model_text = sensor_data['Model_Sensor'] or ''
-                if len(model_text) > 50:
-                    model_text = model_text[:50]
-                self.model_input.setText(model_text)
-
-                # Устанавливаем диапазоны
-                self.range_min_input.setValue(
-                    float(sensor_data['Range_Min']) if sensor_data['Range_Min'] is not None else 0.0)
-                self.range_max_input.setValue(
-                    float(sensor_data['Range_Max']) if sensor_data['Range_Max'] is not None else 0.0)
-
-                # Устанавливаем дату установки
-                if sensor_data['Installation_Date']:
-                    self.installation_date.setDate(QDate.fromString(sensor_data['Installation_Date'], "yyyy-MM-dd"))
-
-                self.add_btn.setEnabled(False)
-                self.update_btn.setEnabled(True)
-
-        except Exception as e:
-            print(f"Ошибка редактирования: {e}")
-
-    def load_pools(self):
-        """Загрузка списка бассейнов"""
-        pools = self.db_manager.get_all_pools()
-        self.pool_combo.clear()
-        for pool in pools:
-            self.pool_combo.addItem(
-                f"{pool['Name_Pool']} ({pool['Fish_Type']})",
-                pool['ID_Pool']
-            )
-
     def load_sensors(self):
         """Загрузка списка датчиков"""
         try:
-            # Получаем все датчики с информацией о бассейнах
             sensors_data = []
             pools = self.db_manager.get_all_pools()
 
             for pool in pools:
                 sensors = self.db_manager.get_sensors_by_pool(pool['ID_Pool'])
                 for sensor in sensors:
-                    # Получаем последние показания для датчика
                     readings = self.db_manager.get_latest_sensor_readings(pool['ID_Pool'])
                     latest_reading = "Нет данных"
 
@@ -280,18 +208,9 @@ class SensorManagerDialog(QDialog):
                 sensor = data['sensor']
 
                 self.sensors_table.setItem(row, 0, QTableWidgetItem(str(sensor['ID_Sensor'])))
-
-                pool_name = data['pool_name']
-                if len(pool_name) > 20:
-                    pool_name = pool_name[:20] + "..."
-                self.sensors_table.setItem(row, 1, QTableWidgetItem(pool_name))
-
+                self.sensors_table.setItem(row, 1, QTableWidgetItem(data['pool_name']))
                 self.sensors_table.setItem(row, 2, QTableWidgetItem(sensor['Type_Sensor']))
-
-                model = sensor['Model_Sensor'] or '-'
-                if len(model) > 15:
-                    model = model[:15] + "..."
-                self.sensors_table.setItem(row, 3, QTableWidgetItem(model))
+                self.sensors_table.setItem(row, 3, QTableWidgetItem(sensor['Model_Sensor'] or '-'))
 
                 range_min = str(sensor['Range_Min']) if sensor['Range_Min'] is not None else '-'
                 self.sensors_table.setItem(row, 4, QTableWidgetItem(range_min))
@@ -300,16 +219,79 @@ class SensorManagerDialog(QDialog):
                 self.sensors_table.setItem(row, 5, QTableWidgetItem(range_max))
 
                 self.sensors_table.setItem(row, 6, QTableWidgetItem(sensor['Installation_Date']))
+                self.sensors_table.setItem(row, 7, QTableWidgetItem(data['latest_reading']))
 
-                readings_text = data['latest_reading']
-                if len(readings_text) > 30:
-                    readings_text = readings_text[:30] + "..."
-                self.sensors_table.setItem(row, 7, QTableWidgetItem(readings_text))
-
-            self.sensors_table.resizeColumnToContents(7)
+            # Автоподбор ширины колонок после заполнения данных
+            self.sensors_table.resizeColumnsToContents()
 
         except Exception as e:
             QMessageBox.critical(self, "Ошибка", f"Ошибка загрузки датчиков: {e}")
+
+    # Остальные методы остаются без изменений...
+
+    # Все остальные методы остаются БЕЗ ИЗМЕНЕНИЙ
+    def on_cell_clicked(self, row, column):
+        """Обработчик клика по любой ячейке строки"""
+        try:
+            sensor_id = int(self.sensors_table.item(row, 0).text())
+            self.edit_sensor_by_id(sensor_id)
+        except (ValueError, AttributeError) as e:
+            print(f"Ошибка при выборе строки: {e}")
+
+    def edit_sensor_by_id(self, sensor_id):
+        """Редактирование датчика по ID"""
+        try:
+            pools = self.db_manager.get_all_pools()
+            sensor_data = None
+
+            for pool in pools:
+                sensors = self.db_manager.get_sensors_by_pool(pool['ID_Pool'])
+                for sensor in sensors:
+                    if sensor['ID_Sensor'] == sensor_id:
+                        sensor_data = sensor
+                        break
+                if sensor_data:
+                    break
+
+            if sensor_data:
+                self.current_sensor_id = sensor_id
+
+                index = self.pool_combo.findData(sensor_data['ID_Pool'])
+                if index >= 0:
+                    self.pool_combo.setCurrentIndex(index)
+
+                index = self.type_combo.findText(sensor_data['Type_Sensor'])
+                if index >= 0:
+                    self.type_combo.setCurrentIndex(index)
+
+                model_text = sensor_data['Model_Sensor'] or ''
+                if len(model_text) > 50:
+                    model_text = model_text[:50]
+                self.model_input.setText(model_text)
+
+                self.range_min_input.setValue(
+                    float(sensor_data['Range_Min']) if sensor_data['Range_Min'] is not None else 0.0)
+                self.range_max_input.setValue(
+                    float(sensor_data['Range_Max']) if sensor_data['Range_Max'] is not None else 0.0)
+
+                if sensor_data['Installation_Date']:
+                    self.installation_date.setDate(QDate.fromString(sensor_data['Installation_Date'], "yyyy-MM-dd"))
+
+                self.add_btn.setEnabled(False)
+                self.update_btn.setEnabled(True)
+
+        except Exception as e:
+            print(f"Ошибка редактирования: {e}")
+
+    def load_pools(self):
+        """Загрузка списка бассейнов"""
+        pools = self.db_manager.get_all_pools()
+        self.pool_combo.clear()
+        for pool in pools:
+            self.pool_combo.addItem(
+                f"{pool['Name_Pool']} ({pool['Fish_Type']})",
+                pool['ID_Pool']
+            )
 
     def add_sensor(self):
         """Добавление нового датчика"""
@@ -476,7 +458,6 @@ class SensorManagerDialog(QDialog):
             sensor_type = self.sensors_table.item(current_row, 2).text()
             pool_name = self.sensors_table.item(current_row, 1).text()
 
-            # Импортируем здесь чтобы избежать циклических импортов
             try:
                 from gui.dialogs.sensor_readings_dialog import SensorReadingsDialog
                 dialog = SensorReadingsDialog(self.db_manager, sensor_id, f"{sensor_type} - {pool_name}", self)

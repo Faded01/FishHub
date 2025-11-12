@@ -5,7 +5,6 @@ from PyQt6.QtWidgets import (
     QDialogButtonBox
 )
 from PyQt6.QtCore import Qt, QDate
-from datetime import datetime
 
 
 class PoolManagerDialog(QDialog):
@@ -32,7 +31,7 @@ class PoolManagerDialog(QDialog):
 
         self.name_input = QLineEdit()
         self.name_input.setPlaceholderText("Название бассейна")
-        self.name_input.setMaxLength(100)  # Ограничение символов
+        self.name_input.setMaxLength(100)
         form_layout.addRow("Название:", self.name_input)
 
         self.volume_input = QLineEdit()
@@ -41,7 +40,7 @@ class PoolManagerDialog(QDialog):
 
         self.fish_type_input = QLineEdit()
         self.fish_type_input.setPlaceholderText("Вид рыбы")
-        self.fish_type_input.setMaxLength(50)  # Ограничение символов
+        self.fish_type_input.setMaxLength(50)
         form_layout.addRow("Тип рыбы:", self.fish_type_input)
 
         self.fish_count_input = QLineEdit()
@@ -94,17 +93,17 @@ class PoolManagerDialog(QDialog):
             "ID", "Название", "Объем", "Тип рыбы", "Количество", "Дата зарыбления", "Статус"
         ])
 
-        # Настраиваем умное растягивание колонок
+        # Настраиваем растягивание колонок
         header = self.pools_table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)  # ID
-        header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)  # Название
-        header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)  # Объем
-        header.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)  # Тип рыбы
-        header.setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)  # Количество
-        header.setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)  # Дата зарыбления
-        header.setSectionResizeMode(6, QHeaderView.ResizeMode.Stretch)  # Статус
+        header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(6, QHeaderView.ResizeMode.Stretch)
 
-        # Подключаем обработчик выбора строки по клику на любую ячейку
+        # Подключаем обработчик выбора строки
         self.pools_table.cellClicked.connect(self.on_cell_clicked)
         table_layout.addWidget(self.pools_table)
 
@@ -129,9 +128,12 @@ class PoolManagerDialog(QDialog):
         layout.addWidget(table_group)
 
         # Кнопки диалога
-        button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
-        button_box.rejected.connect(self.reject)
-        layout.addWidget(button_box)
+        close_button = QPushButton("Закрыть")
+        close_button.clicked.connect(self.reject)
+        button_layout = QHBoxLayout()
+        button_layout.addStretch()
+        button_layout.addWidget(close_button)
+        layout.addLayout(button_layout)
 
         self.setLayout(layout)
         self.current_pool_id = None
@@ -152,7 +154,6 @@ class PoolManagerDialog(QDialog):
             if pool:
                 self.current_pool_id = pool_id
 
-                # Устанавливаем название с ограничением длины
                 name_text = pool['Name_Pool']
                 if len(name_text) > 100:
                     name_text = name_text[:100]
@@ -160,7 +161,6 @@ class PoolManagerDialog(QDialog):
 
                 self.volume_input.setText(str(pool['Volume_Pool']))
 
-                # Устанавливаем тип рыбы с ограничением длины
                 fish_type_text = pool['Fish_Type']
                 if len(fish_type_text) > 50:
                     fish_type_text = fish_type_text[:50]
@@ -188,7 +188,6 @@ class PoolManagerDialog(QDialog):
             for row, pool in enumerate(pools):
                 self.pools_table.setItem(row, 0, QTableWidgetItem(str(pool['ID_Pool'])))
 
-                # Название бассейна с ограничением длины
                 pool_name = pool['Name_Pool']
                 if len(pool_name) > 30:
                     pool_name = pool_name[:30] + "..."
@@ -196,7 +195,6 @@ class PoolManagerDialog(QDialog):
 
                 self.pools_table.setItem(row, 2, QTableWidgetItem(str(pool['Volume_Pool'])))
 
-                # Тип рыбы с ограничением длины
                 fish_type = pool['Fish_Type']
                 if len(fish_type) > 20:
                     fish_type = fish_type[:20] + "..."
@@ -223,7 +221,6 @@ class PoolManagerDialog(QDialog):
                 QMessageBox.warning(self, "Ошибка", "Заполните все поля!")
                 return
 
-            # Проверяем длину текстовых полей
             if len(name) > 100:
                 QMessageBox.warning(self, "Ошибка", "Название не должно превышать 100 символов!")
                 return
@@ -248,14 +245,6 @@ class PoolManagerDialog(QDialog):
         except Exception as e:
             QMessageBox.critical(self, "Ошибка", f"Ошибка добавления: {e}")
 
-    def edit_pool(self, row, column):
-        """Редактирование бассейна по двойному клику (оставляем для обратной совместимости)"""
-        try:
-            pool_id = int(self.pools_table.item(row, 0).text())
-            self.edit_pool_by_id(pool_id)
-        except Exception as e:
-            print(f"Ошибка редактирования: {e}")
-
     def update_pool(self):
         """Обновление бассейна"""
         try:
@@ -273,7 +262,6 @@ class PoolManagerDialog(QDialog):
                 QMessageBox.warning(self, "Ошибка", "Заполните все поля!")
                 return
 
-            # Проверяем длину текстовых полей
             if len(name) > 100:
                 QMessageBox.warning(self, "Ошибка", "Название не должно превышать 100 символов!")
                 return

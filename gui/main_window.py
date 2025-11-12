@@ -25,7 +25,7 @@ class MainWindow(QMainWindow):
     def init_ui(self):
         """Инициализация интерфейса"""
         self.setWindowTitle(f"FishHub | {self.user_data['full_name']}")
-        self.setGeometry(100, 100, 1200, 800)
+        self.setGeometry(100, 100, 1250, 800)
 
         # Меню
         self.create_menu()

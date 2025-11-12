@@ -1,8 +1,7 @@
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QTableWidget, QTableWidgetItem, QHeaderView, QMessageBox,
-    QGroupBox, QFormLayout, QDoubleSpinBox, QComboBox,
-    QDialogButtonBox
+    QGroupBox, QFormLayout, QDoubleSpinBox, QComboBox
 )
 from PyQt6.QtCore import Qt
 from datetime import datetime
@@ -15,7 +14,7 @@ class SensorReadingsDialog(QDialog):
         self.sensor_id = sensor_id
         self.setWindowTitle(f"Показания датчика - {sensor_title}")
         self.setModal(True)
-        self.setMinimumSize(900, 600)  # Увеличиваем минимальный размер
+        self.setMinimumSize(800, 600)
         self.init_ui()
         self.load_readings()
 
@@ -42,7 +41,7 @@ class SensorReadingsDialog(QDialog):
         self.status_combo.addItems(["Норма", "Предупреждение", "Критично"])
         form_layout.addRow("Статус:", self.status_combo)
 
-        # Кнопки формы - УБИРАЕМ кнопку симуляции
+        # Кнопки формы
         form_buttons_layout = QHBoxLayout()
         self.add_btn = QPushButton("Добавить показания")
         self.add_btn.clicked.connect(self.add_reading)
@@ -66,35 +65,33 @@ class SensorReadingsDialog(QDialog):
             "ID записи", "Значение", "Статус", "Время"
         ])
 
-        # Настраиваем умное растягивание колонок вместо Stretch
-        header = self.readings_table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)  # Время
-        header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)  # Значение
-        header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)  # Статус
-        header.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)  # ID записи
-
-        # Устанавливаем минимальные ширины для лучшего отображения
-        self.readings_table.setColumnWidth(0, 180)  # Время - больше места для полной даты
+        # ФИКСИРОВАННЫЕ ШИРИНЫ КОЛОНОК
+        self.readings_table.setColumnWidth(0, 80)   # ID записи
         self.readings_table.setColumnWidth(1, 100)  # Значение
         self.readings_table.setColumnWidth(2, 120)  # Статус
-        self.readings_table.setColumnWidth(3, 80)  # ID записи
+        self.readings_table.setColumnWidth(3, 150)  # Время
+
+        # Растягиваем последнюю колонку
+        header = self.readings_table.horizontalHeader()
+        header.setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
 
         table_layout.addWidget(self.readings_table)
-
         table_group.setLayout(table_layout)
         layout.addWidget(table_group)
 
         # Кнопки диалога
-        button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
-        button_box.rejected.connect(self.reject)
-        layout.addWidget(button_box)
+        close_button = QPushButton("Закрыть")
+        close_button.clicked.connect(self.reject)
+        button_layout = QHBoxLayout()
+        button_layout.addStretch()
+        button_layout.addWidget(close_button)
+        layout.addLayout(button_layout)
 
         self.setLayout(layout)
 
     def load_readings(self):
         """Загрузка показаний датчика"""
         try:
-            # Получаем все показания для этого датчика
             query = """
                 SELECT * FROM Sensor_Readings 
                 WHERE ID_Sensor = ? 
@@ -107,9 +104,7 @@ class SensorReadingsDialog(QDialog):
             self.readings_table.setRowCount(len(readings))
 
             for row, reading in enumerate(readings):
-                # Форматируем время для полного отображения
                 time_str = reading['Timestamp_Sensor']
-                # Если время в формате с миллисекундами, обрезаем до секунд
                 if '.' in time_str:
                     time_str = time_str.split('.')[0]
 
@@ -118,7 +113,7 @@ class SensorReadingsDialog(QDialog):
                 self.readings_table.setItem(row, 2, QTableWidgetItem(reading['Status_Readings']))
                 self.readings_table.setItem(row, 3, QTableWidgetItem(time_str))
 
-            # Подгоняем размер колонок под содержимое
+            # Автоподбор ширины колонок после заполнения данных
             self.readings_table.resizeColumnsToContents()
 
         except Exception as e:
@@ -141,5 +136,3 @@ class SensorReadingsDialog(QDialog):
 
         except Exception as e:
             QMessageBox.critical(self, "Ошибка", f"Ошибка добавления: {e}")
-
-    # УДАЛЯЕМ метод simulate_readings полностью

@@ -20,6 +20,7 @@ class FeedingWidget(QWidget):
         # Заголовок
         title = QLabel("Управление кормлением")
         title.setObjectName("widgetTitle")
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(title)
 
         # Форма добавления кормления
@@ -33,7 +34,16 @@ class FeedingWidget(QWidget):
 
         # Тип корма
         self.feed_type_combo = QComboBox()
-        self.feed_type_combo.addItems(["Стартовый", "Ростовой", "Финишный", "Лечебный"])
+        self.feed_type_combo.addItems([
+            "Стартовый",
+            "Ростовой",
+            "Финишный",
+            "Лечебный",
+            "Гранулы для молоди",
+            "Гранулы для взрослых особей",
+            "Комбинации крахмальные",
+            "Специализированный лечебный"
+        ])
         form_layout.addRow("Тип корма:", self.feed_type_combo)
 
         # Количество корма
@@ -66,9 +76,21 @@ class FeedingWidget(QWidget):
         self.feeding_table.setHorizontalHeaderLabels([
             "Бассейн", "Тип корма", "Количество", "Время", "Метод", "Дата"
         ])
-        self.feeding_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        history_layout.addWidget(self.feeding_table)
 
+        # Настройка ширины колонок - растягиваем равномерно
+        header = self.feeding_table.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)
+
+        # Устанавливаем минимальные ширины для важных колонок
+        self.feeding_table.setColumnWidth(1, 150)  # Тип корма
+        self.feeding_table.setColumnWidth(2, 100)  # Количество
+
+        history_layout.addWidget(self.feeding_table)
         history_group.setLayout(history_layout)
         layout.addWidget(history_group)
 
@@ -108,25 +130,53 @@ class FeedingWidget(QWidget):
             self.feeding_table.setRowCount(len(feedings))
 
             for row, feeding in enumerate(feedings):
+                # Бассейн
                 self.feeding_table.setItem(row, 0, QTableWidgetItem(feeding['Name_Pool']))
-                self.feeding_table.setItem(row, 1, QTableWidgetItem(feeding['Feed_Type']))
-                self.feeding_table.setItem(row, 2, QTableWidgetItem(f"{feeding['Feed_Amount']} кг"))
-                self.feeding_table.setItem(row, 3, QTableWidgetItem(feeding['Feeding_Time'][11:16]))  # Время
+
+                # Тип корма
+                feed_type = feeding['Feed_Type']
+                self.feeding_table.setItem(row, 1, QTableWidgetItem(feed_type))
+
+                # Количество
+                amount = float(feeding['Feed_Amount'])
+                self.feeding_table.setItem(row, 2, QTableWidgetItem(f"{amount:.1f} кг"))
+
+                # Время
+                feeding_time = feeding['Feeding_Time']
+                if feeding_time and ' ' in feeding_time:
+                    time_str = feeding_time.split(' ')[1][:8]  # Берем время ЧЧ:ММ:СС
+                else:
+                    time_str = '--:--:--'
+                self.feeding_table.setItem(row, 3, QTableWidgetItem(time_str))
+
+                # Метод
                 self.feeding_table.setItem(row, 4, QTableWidgetItem(feeding['Feeding_Method']))
-                self.feeding_table.setItem(row, 5, QTableWidgetItem(feeding['Feeding_Time'][:10]))  # Дата
+
+                # Дата
+                if feeding_time:
+                    date_str = feeding_time[:10]  # Берем дату ГГГГ-ММ-ДД
+                else:
+                    date_str = '--'
+                self.feeding_table.setItem(row, 5, QTableWidgetItem(date_str))
+
+            # Обновляем отображение таблицы
+            self.feeding_table.resizeColumnsToContents()
 
             # Статистика
             stats = self.db_manager.get_feeding_statistics()
             if stats:
-                self.today_label.setText(f"Сегодня: {stats['today'] or 0} кг")
-                self.week_label.setText(f"За неделю: {stats['week'] or 0} кг")
-                self.month_label.setText(f"За месяц: {stats['month'] or 0} кг")
+                today_amount = stats['today'] if stats['today'] else 0
+                week_amount = stats['week'] if stats['week'] else 0
+                month_amount = stats['month'] if stats['month'] else 0
+
+                self.today_label.setText(f"Сегодня: {today_amount:.1f} кг")
+                self.week_label.setText(f"За неделю: {week_amount:.1f} кг")
+                self.month_label.setText(f"За месяц: {month_amount:.1f} кг")
 
         except Exception as e:
             print(f"Ошибка обновления кормления: {e}")
 
     def add_feeding(self):
-        """Добавление нового кормления"""
         try:
             pool_id = self.pool_combo.currentData()
             feed_type = self.feed_type_combo.currentText()
@@ -141,7 +191,6 @@ class FeedingWidget(QWidget):
                 QMessageBox.warning(self, "Ошибка", "Введите количество корма!")
                 return
 
-            # Добавляем кормление
             success = self.db_manager.add_feeding(
                 pool_id, feed_type, amount,
                 datetime.now().strftime("%Y-%m-%d %H:%M:%S"),

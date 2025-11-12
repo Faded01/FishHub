@@ -26,11 +26,10 @@ class DatabaseEditorWindow(QWidget):
             self.setWindowTitle(
                 f"Редактор базы данных — FishHub (Администратор: {self.user_data.get('full_name', 'Неизвестно')})")
 
-        self.setMinimumSize(1250, 800)
+        self.setMinimumSize(1300, 800)  # Увеличил минимальный размер
 
-        # Основной layout с выравниванием по центру
+        # Основной layout
         main_layout = QVBoxLayout()
-        main_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         # Контейнер для содержимого с отступами
         content_widget = QWidget()
@@ -56,7 +55,7 @@ class DatabaseEditorWindow(QWidget):
         self.btn_delete_row = QPushButton("Удалить строку")
         self.btn_delete_row.clicked.connect(self.delete_row)
         self.btn_export = QPushButton("Экспорт в Excel")
-        self.btn_export.clicked.connect(self.export_to_excel)  # ИСПРАВЛЕНИЕ: убрали скобки
+        self.btn_export.clicked.connect(self.export_to_excel)
 
         table_layout.addWidget(self.btn_save)
         table_layout.addWidget(self.btn_refresh)
@@ -68,8 +67,10 @@ class DatabaseEditorWindow(QWidget):
         # Таблица данных
         self.table_view = QTableView()
         self.table_view.setAlternatingRowColors(True)
-        self.table_view.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
 
+        # Настройка отображения таблицы
+        header = self.table_view.horizontalHeader()
+        header.setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
 
         # Модель данных
         self.model = QStandardItemModel()
@@ -78,7 +79,6 @@ class DatabaseEditorWindow(QWidget):
 
         # Статус бар
         self.status_label = QLabel("Готов к работе")
-        self.status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         # Собираем layout
         content_layout.addLayout(table_layout)
@@ -91,6 +91,37 @@ class DatabaseEditorWindow(QWidget):
         # Загрузка первой таблицы
         if self.table_combo.count() > 0:
             self.load_table_data(self.table_combo.currentText())
+
+    def load_table_data(self, russian_table_name):
+        table_name = self.table_combo.currentData()
+        if not table_name:
+            return
+
+        self.current_table = table_name
+        try:
+            data = self.db_manager.get_all_data(table_name)
+            russian_columns = self.get_russian_columns(table_name)
+
+            self.model.clear()
+            self.model.setHorizontalHeaderLabels(russian_columns)
+
+            for row in data:
+                items = [QStandardItem(str(value) if value is not None else "") for value in row]
+                for item in items:
+                    item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                self.model.appendRow(items)
+
+            for i in range(self.model.columnCount()):
+                self.model.setHeaderData(i, Qt.Orientation.Horizontal, Qt.AlignmentFlag.AlignCenter,
+                                         Qt.ItemDataRole.TextAlignmentRole)
+
+            for i in range(self.model.columnCount()):
+                self.table_view.setColumnWidth(i, 150)
+
+            self.status_label.setText(f"Загружена таблица: {russian_table_name} | Записей: {len(data)}")
+
+        except Exception as e:
+            self.show_error(f"Ошибка загрузки таблицы: {str(e)}")
 
     def load_table_names(self):
         """Автоматическая загрузка таблиц с русскими названиями"""
@@ -111,6 +142,8 @@ class DatabaseEditorWindow(QWidget):
         for table in user_tables:
             russian_name = table_mapping.get(table, table)
             self.table_combo.addItem(russian_name, table)
+
+    # ... остальные методы без изменений
 
     def get_russian_columns(self, table_name):
         """Возвращает русские названия колонок для таблицы"""
@@ -215,62 +248,51 @@ class DatabaseEditorWindow(QWidget):
                 self.status_label.setText(f"Ошибка автосохранения: {str(e)}")
 
     def save_modified_cells(self):
-        """Сохранение измененных ячеек"""
+        """Сохранение измененных ячеек с учетом новых строк"""
         try:
             table_name = self.table_combo.currentData()
             columns = self.db_manager.get_table_columns(table_name)
 
             for row, col in self.modified_cells:
                 primary_key_col = 0
-                primary_key = self.model.item(row, primary_key_col).text()
+                primary_key_item = self.model.item(row, primary_key_col)
+
+                if not primary_key_item:
+                    continue
+
+                primary_key = primary_key_item.text()
                 new_value = self.model.item(row, col).text()
                 column_name = columns[col]
 
-                query = f"UPDATE {table_name} SET {column_name} = ? WHERE {columns[0]} = ?"
-                self.db_manager.cursor.execute(query, (new_value, primary_key))
+                # Если primary_key пустой - это новая строка, нужно вставить
+                if not primary_key.strip():
+                    # Создаем новую строку в БД
+                    placeholders = ", ".join(["?" for _ in range(len(columns))])
+                    column_names = ", ".join(columns)
+
+                    values = []
+                    for i in range(len(columns)):
+                        item = self.model.item(row, i)
+                        values.append(item.text() if item else "")
+
+                    query = f"INSERT INTO {table_name} ({column_names}) VALUES ({placeholders})"
+                    self.db_manager.cursor.execute(query, values)
+                    self.db_manager.connection.commit()
+
+                    # Обновляем ID в интерфейсе
+                    new_id = self.db_manager.cursor.lastrowid
+                    if new_id:
+                        self.model.item(row, primary_key_col).setText(str(new_id))
+
+                else:
+                    # Обновляем существующую строку
+                    query = f"UPDATE {table_name} SET {column_name} = ? WHERE {columns[0]} = ?"
+                    self.db_manager.cursor.execute(query, (new_value, primary_key))
 
             self.db_manager.connection.commit()
 
         except Exception as e:
             raise Exception(f"Ошибка сохранения ячеек: {str(e)}")
-
-    def load_table_data(self, russian_table_name):
-        """Загрузка данных таблицы с русскими названиями и выравниванием по центру"""
-        table_name = self.table_combo.currentData()
-        if not table_name:
-            return
-
-        self.current_table = table_name
-        try:
-            data = self.db_manager.get_all_data(table_name)
-            russian_columns = self.get_russian_columns(table_name)
-
-            self.model.clear()
-            self.model.setHorizontalHeaderLabels(russian_columns)
-
-            for row in data:
-                items = [QStandardItem(str(value) if value is not None else "") for value in row]
-                for item in items:
-                    item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-                self.model.appendRow(items)
-
-            for i in range(self.model.columnCount()):
-                self.model.setHeaderData(i, Qt.Orientation.Horizontal, Qt.AlignmentFlag.AlignCenter,
-                                         Qt.ItemDataRole.TextAlignmentRole)
-
-            self.table_view.resizeColumnsToContents()
-
-            for i in range(self.model.columnCount()):
-                current_width = self.table_view.columnWidth(i)
-                new_width = max(120, min(current_width, 300))
-                self.table_view.setColumnWidth(i, new_width)
-
-            self.table_view.horizontalHeader().setDefaultAlignment(Qt.AlignmentFlag.AlignCenter)
-
-            self.status_label.setText(f"Загружена таблица: {russian_table_name} | Записей: {len(data)}")
-
-        except Exception as e:
-            self.show_error(f"Ошибка загрузки таблицы: {str(e)}")
 
     def save_changes(self):
         """Ручное сохранение изменений"""
@@ -294,26 +316,112 @@ class DatabaseEditorWindow(QWidget):
         self.modified_cells.clear()
 
     def add_row(self):
-        """Добавление новой строки с автоматическим сохранением"""
+        """Упрощенное добавление строки"""
         try:
             table_name = self.table_combo.currentData()
+            if not table_name:
+                QMessageBox.warning(self, "Ошибка", "Выберите таблицу!")
+                return
+
+            # Получаем колонки таблицы
             columns = self.db_manager.get_table_columns(table_name)
+            if not columns:
+                self.show_error("Не удалось получить структуру таблицы")
+                return
 
-            row_items = [QStandardItem("") for _ in range(self.model.columnCount())]
-            self.model.appendRow(row_items)
+            # Исключаем первую колонку (предполагаем что это ID)
+            if len(columns) > 1:
+                insert_columns = columns[1:]  # Все колонки кроме первой
+            else:
+                insert_columns = columns
 
-            self.modified_cells.clear()
-            for col in range(self.model.columnCount()):
-                self.modified_cells.add((self.model.rowCount() - 1, col))
+            # Формируем значения по умолчанию
+            values = ["Новое значение" for _ in insert_columns]
 
-            self.auto_save()
-            self.status_label.setText("Новая строка добавлена и сохранена")
+            # Формируем и выполняем INSERT запрос
+            placeholders = ", ".join(["?" for _ in insert_columns])
+            column_names = ", ".join(insert_columns)
+
+            query = f"INSERT INTO {table_name} ({column_names}) VALUES ({placeholders})"
+
+            print(f"DEBUG: Executing: {query}")
+            print(f"DEBUG: Values: {values}")
+
+            self.db_manager.cursor.execute(query, values)
+            self.db_manager.connection.commit()
+
+            # Обновляем интерфейс
+            self.refresh_data()
+
+            self.status_label.setText("Новая строка добавлена в базу данных")
+            QMessageBox.information(self, "Успех", "Строка успешно добавлена в базу данных")
 
         except Exception as e:
             self.show_error(f"Ошибка добавления строки: {str(e)}")
 
+    def get_detailed_table_info(self, table_name):
+        """Получает детальную информацию о колонках таблицы"""
+        try:
+            self.db_manager.cursor.execute(f"PRAGMA table_info({table_name})")
+            return self.db_manager.cursor.fetchall()
+        except Exception as e:
+            print(f"Ошибка получения информации о таблице: {e}")
+            return []
+
+    def prepare_insert_data(self, table_name, table_info):
+        """Подготавливает данные для INSERT запроса"""
+        columns = []
+        values = []
+
+        for col_info in table_info:
+            col_name = col_info[1]
+            col_type = col_info[2]
+            not_null = col_info[3] == 1
+            default_value = col_info[4]
+            is_primary = col_info[5] == 1
+
+            # Пропускаем AUTOINCREMENT primary keys
+            if is_primary and self.is_autoincrement(table_name, col_name):
+                continue
+
+            # Для внешних ключей проверяем существование записей
+            if col_name.startswith('ID_') and col_name != 'ID_User':
+                if not self.has_records_for_foreign_key(table_name, col_name):
+                    continue
+                # Устанавливаем первый доступный ID
+                values.append(1)
+            else:
+                # Используем значение по умолчанию из БД или наше
+                if default_value is not None:
+                    values.append(default_value)
+                else:
+                    values.append(self.get_default_value(col_name))
+
+            columns.append(col_name)
+
+        return {
+            'columns': columns,
+            'columns_str': ", ".join(columns),
+            'placeholders': ", ".join(["?" for _ in columns]),
+            'values': values
+        }
+
+    def is_autoincrement(self, table_name, column_name):
+        """Проверяет, является ли поле AUTOINCREMENT"""
+        # В SQLite поле считается AUTOINCREMENT если оно INTEGER PRIMARY KEY
+        try:
+            self.db_manager.cursor.execute(f"PRAGMA table_info({table_name})")
+            columns = self.db_manager.cursor.fetchall()
+
+            for col in columns:
+                if col[1] == column_name and col[5] == 1:  # PRIMARY KEY
+                    return "INT" in col[2].upper()
+            return False
+        except Exception:
+            return False
+
     def delete_row(self):
-        """Удаление строки с автоматическим сохранением"""
+        """Удаление строки из БД"""
         try:
             current_index = self.table_view.currentIndex()
             if not current_index.isValid():
@@ -324,16 +432,32 @@ class DatabaseEditorWindow(QWidget):
             columns = self.db_manager.get_table_columns(table_name)
             row = current_index.row()
 
-            primary_key = self.model.item(row, 0).text()
+            # Получаем первичный ключ
+            primary_key_item = self.model.item(row, 0)
+            if not primary_key_item:
+                QMessageBox.warning(self, "Ошибка", "Не удалось определить ID строки!")
+                return
 
-            query = f"DELETE FROM {table_name} WHERE {columns[0]} = ?"
-            self.db_manager.cursor.execute(query, (primary_key,))
-            self.db_manager.connection.commit()
+            primary_key = primary_key_item.text()
 
-            self.model.removeRow(row)
+            # Подтверждение удаления
+            reply = QMessageBox.question(
+                self,
+                "Подтверждение удаления",
+                f"Вы уверены, что хотите удалить эту строку? (ID: {primary_key})",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            )
 
-            self.status_label.setText("Строка удалена")
-            QMessageBox.information(self, "Удаление", "Строка успешно удалена из базы данных")
+            if reply == QMessageBox.StandardButton.Yes:
+                query = f"DELETE FROM {table_name} WHERE {columns[0]} = ?"
+                self.db_manager.cursor.execute(query, (primary_key,))
+                self.db_manager.connection.commit()
+
+                # Удаляем из модели только после успешного удаления из БД
+                self.model.removeRow(row)
+
+                self.status_label.setText("Строка удалена из базы данных")
+                QMessageBox.information(self, "Успех", "Строка успешно удалена из базы данных")
 
         except Exception as e:
             self.show_error(f"Ошибка удаления: {str(e)}")
@@ -385,14 +509,3 @@ class DatabaseEditorWindow(QWidget):
     def handle_exit(self):
         """Обработка выхода"""
         self.close()
-
-    def show_about(self):
-        """Показать окно 'О программе'"""
-        QMessageBox.about(
-            self,
-            "О программе FishHub",
-            "FishHub - Редактор базы данных\n\n"
-            "Версия: 1.0\n"
-            "Разработчик: Тепикин Ф. М.\n\n"
-            "Программа предназначена для административного управления базой данных системы FishHub"
-        )

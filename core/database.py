@@ -10,19 +10,16 @@ class DatabaseManager:
         self.connect()
 
     def connect(self):
-        """Устанавливает соединение с базой данных"""
         try:
-            # Создаем директорию если не существует
             import os
             os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
-
             self.connection = sqlite3.connect(self.db_path)
             self.connection.row_factory = sqlite3.Row
             self.cursor = self.connection.cursor()
             print(f"[DB] Успешное подключение к {self.db_path}")
         except sqlite3.Error as e:
             print(f"[DB ERROR] Не удалось подключиться к базе данных: {e}")
-            raise  # Перебрасываем исключение для отладки
+            raise  # переброс исключения для отладки
 
     def is_connected(self):
         """Проверяет активное соединение с БД"""
@@ -47,10 +44,6 @@ class DatabaseManager:
     # Работа с пользователями
     # ------------------------
     def check_user(self, username: str, password: str):
-        """
-        Проверяет наличие пользователя с указанными логином и паролем.
-        Возвращает словарь с данными, если пользователь найден.
-        """
         try:
             query = """
                 SELECT e.ID_User, e.Username, e.Password_User, e.Name_User, e.Surname_User, e.Patronymic_User,
@@ -63,10 +56,8 @@ class DatabaseManager:
             user = self.cursor.fetchone()
 
             if user:
-                # Формируем полное имя
                 full_name = f"{user['Surname_User']} {user['Name_User']} {user['Patronymic_User']}".strip()
 
-                # Получаем название роли
                 role_query = "SELECT Name_Role FROM Roles WHERE ID_Role = ?"
                 self.cursor.execute(role_query, (user['Role_ID'],))
                 role_result = self.cursor.fetchone()
@@ -83,7 +74,7 @@ class DatabaseManager:
                     "role": role_name,
                     "status": user["Status"],
                     "created_at": user["Created_At"],
-                    "admin_permission": bool(user["Admin_Permission"])  # Преобразуем в boolean
+                    "admin_permission": bool(user["Admin_Permission"])
                 }
             return None
         except sqlite3.Error as e:
