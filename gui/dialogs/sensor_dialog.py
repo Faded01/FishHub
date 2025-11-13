@@ -39,10 +39,7 @@ class SensorManagerDialog(QDialog):
         self.type_combo.addItems([
             "Температура",
             "Кислород",
-            "pH",
-            "Соленость",
-            "Мутность",
-            "Аммиак"
+            "pH"
         ])
         form_layout.addRow("Тип датчика:", self.type_combo)
 
