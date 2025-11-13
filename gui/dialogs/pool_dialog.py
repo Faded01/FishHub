@@ -131,7 +131,6 @@ class PoolManagerDialog(QDialog):
         self.current_pool_id = None
 
     def on_cell_clicked(self, row, column):
-        """Обработчик клика по любой ячейке строки"""
         try:
             pool_id = int(self.pools_table.item(row, 0).text())
             self.edit_pool_by_id(pool_id)
@@ -139,7 +138,6 @@ class PoolManagerDialog(QDialog):
             print(f"Ошибка при выборе строки: {e}")
 
     def edit_pool_by_id(self, pool_id):
-        """Редактирование бассейна по ID"""
         try:
             pool = self.db_manager.get_pool_by_id(pool_id)
 
@@ -172,7 +170,6 @@ class PoolManagerDialog(QDialog):
             print(f"Ошибка редактирования: {e}")
 
     def load_pools(self):
-        """Загрузка списка бассейнов"""
         try:
             pools = self.db_manager.get_all_pools()
             self.pools_table.setRowCount(len(pools))
@@ -200,7 +197,6 @@ class PoolManagerDialog(QDialog):
             QMessageBox.critical(self, "Ошибка", f"Ошибка загрузки бассейнов: {e}")
 
     def add_pool(self):
-        """Добавление нового бассейна"""
         try:
             name = self.name_input.text().strip()
             volume = self.volume_input.text().strip()
@@ -238,7 +234,6 @@ class PoolManagerDialog(QDialog):
             QMessageBox.critical(self, "Ошибка", f"Ошибка добавления: {e}")
 
     def update_pool(self):
-        """Обновление бассейна"""
         try:
             if not self.current_pool_id:
                 return
@@ -278,7 +273,6 @@ class PoolManagerDialog(QDialog):
             QMessageBox.critical(self, "Ошибка", f"Ошибка обновления: {e}")
 
     def delete_pool(self):
-        """Удаление выбранного бассейна"""
         try:
             current_row = self.pools_table.currentRow()
             if current_row < 0:
@@ -307,7 +301,6 @@ class PoolManagerDialog(QDialog):
             QMessageBox.critical(self, "Ошибка", f"Ошибка удаления: {e}")
 
     def clear_form(self):
-        """Очистка формы"""
         self.current_pool_id = None
         self.name_input.clear()
         self.volume_input.clear()

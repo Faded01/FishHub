@@ -112,7 +112,6 @@ class MonitoringWidget(QWidget):
         self.load_pools()
 
     def load_pools(self):
-        """Загрузка списка бассейнов"""
         try:
             pools = self.db_manager.get_all_pools()
             self.pool_combo.clear()
@@ -126,22 +125,18 @@ class MonitoringWidget(QWidget):
             print(f"Ошибка загрузки бассейнов: {e}")
 
     def on_pool_changed(self):
-        """Обработчик изменения выбранного бассейна"""
         self.selected_pool_id = self.pool_combo.currentData()
         self.refresh_data()
 
     def refresh_data(self):
-        """Оптимизированное обновление данных с ограничением записей"""
         try:
             sensor_type_filter = self.sensor_type_combo.currentText()
             if sensor_type_filter == "Все датчики":
                 sensor_type_filter = None
 
-            # Используем оптимизированный метод с лимитом записей
             if self.selected_pool_id:
                 readings = self.db_manager.get_optimized_sensor_readings(self.selected_pool_id, limit=50)
 
-                # Фильтруем по типу датчика если нужно
                 if sensor_type_filter:
                     readings = [r for r in readings if r['Type_Sensor'] == sensor_type_filter]
 
@@ -152,7 +147,6 @@ class MonitoringWidget(QWidget):
                     self.volume_label.setText(f"Объем: {pool['Volume_Pool']} м³")
                     self.fish_type_label.setText(f"Тип рыбы: {pool['Fish_Type']}")
             else:
-                # Для всех бассейнов берем меньше данных
                 readings = self.db_manager.get_optimized_sensor_readings(limit=30)
                 if sensor_type_filter:
                     readings = [r for r in readings if r['Type_Sensor'] == sensor_type_filter]
@@ -169,9 +163,7 @@ class MonitoringWidget(QWidget):
             print(f"Ошибка обновления мониторинга: {e}")
 
     def get_latest_readings_for_selected_pool(self, sensor_type_filter):
-        """Получение ПОСЛЕДНИХ данных для выбранного бассейна"""
         try:
-            # Получаем последние показания для конкретного бассейна
             readings = self.db_manager.get_latest_sensor_readings(self.selected_pool_id)
 
             if sensor_type_filter:
@@ -183,9 +175,7 @@ class MonitoringWidget(QWidget):
             return []
 
     def get_readings_for_all_pools(self, sensor_type_filter):
-        """Получение данных для всех бассейнов (для усреднения)"""
         try:
-            # Для "Все бассейны" получаем последние данные каждого бассейна
             readings = self.db_manager.get_latest_sensor_readings()
             if sensor_type_filter:
                 readings = [r for r in readings if r['Type_Sensor'] == sensor_type_filter]
@@ -195,12 +185,7 @@ class MonitoringWidget(QWidget):
             return []
 
     def update_current_readings(self, readings):
-        """
-        Обновление текущих показаний
-        Для "Все бассейны" - средние значения, для конкретного - последние показания
-        """
         try:
-            # Сбрасываем все метки
             for param in self.param_labels:
                 unit = self.SENSOR_UNITS.get(param, '')
                 self.param_labels[param].setText(f"{param}: --{unit}")
@@ -209,34 +194,27 @@ class MonitoringWidget(QWidget):
                 return
 
             if self.selected_pool_id:
-                # Для конкретного бассейна - показываем ПОСЛЕДНИЕ показания
                 self.update_with_latest_readings(readings)
             else:
-                # Для "Все бассейны" - показываем СРЕДНИЕ значения
                 self.update_with_average_readings(readings)
 
         except Exception as e:
             print(f"Ошибка обновления текущих показаний: {e}")
 
     def update_with_latest_readings(self, readings):
-        """Обновление ПОСЛЕДНИМИ показаниями для конкретного бассейна"""
         try:
-            # Группируем по типам датчиков и берем последнее значение для каждого типа
             latest_readings = {}
 
             for reading in readings:
                 sensor_type = reading['Type_Sensor']
-                # Если это первый датчик такого типа или более новый, сохраняем
                 if sensor_type not in latest_readings:
                     latest_readings[sensor_type] = reading
                 else:
-                    # Сравниваем время и берем более новое
                     current_time = reading['Timestamp_Sensor']
                     existing_time = latest_readings[sensor_type]['Timestamp_Sensor']
                     if current_time > existing_time:
                         latest_readings[sensor_type] = reading
 
-            # Обновляем метки
             for sensor_type, reading in latest_readings.items():
                 if sensor_type in self.param_labels:
                     self.update_param_label_with_single_value(sensor_type, reading)
@@ -245,9 +223,7 @@ class MonitoringWidget(QWidget):
             print(f"Ошибка обновления последними показаниями: {e}")
 
     def update_with_average_readings(self, readings):
-        """Обновление СРЕДНИМИ значениями для всех бассейнов"""
         try:
-            # Группируем показания по типам датчиков для усреднения
             sensor_groups = {}
 
             for reading in readings:
@@ -256,7 +232,6 @@ class MonitoringWidget(QWidget):
                     sensor_groups[sensor_type] = []
                 sensor_groups[sensor_type].append(reading)
 
-            # Обновляем метки со средними значениями
             for sensor_type, readings_list in sensor_groups.items():
                 if sensor_type in self.param_labels:
                     self.update_param_label_with_average(sensor_type, readings_list)
@@ -265,16 +240,13 @@ class MonitoringWidget(QWidget):
             print(f"Ошибка обновления средними значениями: {e}")
 
     def update_param_label_with_single_value(self, sensor_type, reading):
-        """Обновление метки одним значением (для конкретного бассейна)"""
         try:
             value = float(reading['Value_Sensor'])
             status = reading['Status_Readings']
             unit = self.SENSOR_UNITS.get(sensor_type, '')
 
-            # Форматируем цвет в зависимости от статуса
             color = "green" if status == "Норма" else "orange" if status == "Предупреждение" else "red"
 
-            # Показываем одно значение с временной меткой
             time_str = reading['Timestamp_Sensor'][11:16] if reading['Timestamp_Sensor'] else ''
 
             self.param_labels[sensor_type].setText(
@@ -286,16 +258,13 @@ class MonitoringWidget(QWidget):
             print(f"Ошибка обновления метки {sensor_type}: {e}")
 
     def update_param_label_with_average(self, sensor_type, readings_list):
-        """Обновление метки средним значением (для всех бассейнов)"""
         try:
             if not readings_list:
                 return
 
-            # Вычисляем среднее значение
             values = [float(r['Value_Sensor']) for r in readings_list]
             avg_value = sum(values) / len(values)
 
-            # Определяем статус (берём наихудший)
             statuses = [r['Status_Readings'] for r in readings_list]
             if 'Критично' in statuses:
                 status = 'Критично'
@@ -306,10 +275,8 @@ class MonitoringWidget(QWidget):
 
             unit = self.SENSOR_UNITS.get(sensor_type, '')
 
-            # Форматируем цвет в зависимости от статуса
             color = "green" if status == "Норма" else "orange" if status == "Предупреждение" else "red"
 
-            # Форматируем среднее значение
             self.param_labels[sensor_type].setText(
                 f"{sensor_type}: <span style='color: {color}; font-weight: bold;'>"
                 f"{avg_value:.1f}{unit}</span> "
@@ -319,9 +286,7 @@ class MonitoringWidget(QWidget):
             print(f"Ошибка обновления метки {sensor_type}: {e}")
 
     def update_readings_table(self, readings):
-        """Оптимизированное обновление таблицы"""
         try:
-            # Ограничиваем количество отображаемых строк для производительности
             display_limit = 100
             display_readings = readings[:display_limit]
 
@@ -334,7 +299,6 @@ class MonitoringWidget(QWidget):
                 value = reading['Value_Sensor']
                 status = reading['Status_Readings']
 
-                # Получаем информацию о бассейне
                 pool = self.db_manager.get_pool_by_id(pool_id)
                 pool_name = pool['Name_Pool'] if pool else f"Бассейн {pool_id}"
 
@@ -344,7 +308,6 @@ class MonitoringWidget(QWidget):
                 self.readings_table.setItem(row, 3, QTableWidgetItem(str(value)))
                 self.readings_table.setItem(row, 4, QTableWidgetItem(status))
 
-            # Показываем количество записей в заголовке
             history_group = self.findChild(QGroupBox, "История показаний")
             if history_group:
                 total_count = len(readings)
@@ -358,7 +321,6 @@ class MonitoringWidget(QWidget):
             print(f"Ошибка обновления таблицы: {e}")
 
     def setup_timer(self):
-        """Настройка автообновления с увеличенным интервалом"""
         self.update_timer = QTimer()
         self.update_timer.timeout.connect(self.refresh_data)
-        self.update_timer.start(15000)  # Увеличили с 5 до 15 секунд
+        self.update_timer.start(15000)

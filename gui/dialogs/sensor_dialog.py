@@ -164,7 +164,6 @@ class SensorManagerDialog(QDialog):
         self.current_sensor_id = None
 
     def load_sensors(self):
-        """Загрузка списка датчиков"""
         try:
             sensors_data = []
             pools = self.db_manager.get_all_pools()
@@ -207,17 +206,12 @@ class SensorManagerDialog(QDialog):
                 self.sensors_table.setItem(row, 6, QTableWidgetItem(sensor['Installation_Date']))
                 self.sensors_table.setItem(row, 7, QTableWidgetItem(data['latest_reading']))
 
-            # Автоподбор ширины колонок после заполнения данных
             self.sensors_table.resizeColumnsToContents()
 
         except Exception as e:
             QMessageBox.critical(self, "Ошибка", f"Ошибка загрузки датчиков: {e}")
 
-    # Остальные методы остаются без изменений...
-
-    # Все остальные методы остаются БЕЗ ИЗМЕНЕНИЙ
     def on_cell_clicked(self, row, column):
-        """Обработчик клика по любой ячейке строки"""
         try:
             sensor_id = int(self.sensors_table.item(row, 0).text())
             self.edit_sensor_by_id(sensor_id)
@@ -225,7 +219,6 @@ class SensorManagerDialog(QDialog):
             print(f"Ошибка при выборе строки: {e}")
 
     def edit_sensor_by_id(self, sensor_id):
-        """Редактирование датчика по ID"""
         try:
             pools = self.db_manager.get_all_pools()
             sensor_data = None
@@ -270,7 +263,6 @@ class SensorManagerDialog(QDialog):
             print(f"Ошибка редактирования: {e}")
 
     def load_pools(self):
-        """Загрузка списка бассейнов"""
         pools = self.db_manager.get_all_pools()
         self.pool_combo.clear()
         for pool in pools:
@@ -280,7 +272,6 @@ class SensorManagerDialog(QDialog):
             )
 
     def add_sensor(self):
-        """Добавление нового датчика"""
         try:
             pool_id = self.pool_combo.currentData()
             sensor_type = self.type_combo.currentText()
@@ -317,7 +308,6 @@ class SensorManagerDialog(QDialog):
 
     def add_sensor_to_db(self, pool_id, sensor_type, model, measurement_range_min, measurement_range_max,
                          installation_date):
-        """Вспомогательный метод для добавления датчика в БД"""
         try:
             query = """
                 INSERT INTO Sensors (ID_Pool, Type_Sensor, Model_Sensor, Range_Min, Range_Max, Installation_Date)
@@ -333,7 +323,6 @@ class SensorManagerDialog(QDialog):
             return False
 
     def update_sensor(self):
-        """Обновление датчика"""
         try:
             if not self.current_sensor_id:
                 return
@@ -374,7 +363,6 @@ class SensorManagerDialog(QDialog):
 
     def update_sensor_in_db(self, sensor_id, pool_id, sensor_type, model, measurement_range_min, measurement_range_max,
                             installation_date):
-        """Вспомогательный метод для обновления датчика в БД"""
         try:
             query = """
                 UPDATE Sensors 
@@ -393,7 +381,6 @@ class SensorManagerDialog(QDialog):
             return False
 
     def delete_sensor(self):
-        """Удаление выбранного датчика"""
         try:
             current_row = self.sensors_table.currentRow()
             if current_row < 0:
@@ -423,7 +410,6 @@ class SensorManagerDialog(QDialog):
             QMessageBox.critical(self, "Ошибка", f"Ошибка удаления: {e}")
 
     def delete_sensor_from_db(self, sensor_id):
-        """Вспомогательный метод для удаления датчика из БД"""
         try:
             self.db_manager.cursor.execute("DELETE FROM Sensors WHERE ID_Sensor = ?", (sensor_id,))
             self.db_manager.connection.commit()
@@ -433,7 +419,6 @@ class SensorManagerDialog(QDialog):
             return False
 
     def show_sensor_readings(self):
-        """Показать окно с показаниями датчика"""
         try:
             current_row = self.sensors_table.currentRow()
             if current_row < 0:
@@ -457,7 +442,6 @@ class SensorManagerDialog(QDialog):
             QMessageBox.critical(self, "Ошибка", f"Ошибка показаний: {e}")
 
     def clear_form(self):
-        """Очистка формы"""
         self.current_sensor_id = None
         self.pool_combo.setCurrentIndex(0)
         self.type_combo.setCurrentIndex(0)

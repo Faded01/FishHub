@@ -12,8 +12,6 @@ from gui.widgets.reports_widget import ReportsWidget
 
 
 class MainWindow(QMainWindow):
-    """Главное окно приложения FishHub"""
-
     def __init__(self, db_manager, user_data):
         super().__init__()
         self.db_manager = db_manager
@@ -23,19 +21,15 @@ class MainWindow(QMainWindow):
         self.setup_timer()
 
     def init_ui(self):
-        """Инициализация интерфейса"""
         self.setWindowTitle(f"FishHub | {self.user_data['full_name']}")
         self.setGeometry(100, 100, 1250, 800)
 
-        # Меню
         self.create_menu()
 
-        # Центральный виджет
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         layout = QVBoxLayout(central_widget)
 
-        # Вкладки
         self.tab_widget = QTabWidget()
         self.monitoring_tab = MonitoringWidget(self.db_manager)
         self.feeding_tab = FeedingWidget(self.db_manager)
@@ -46,7 +40,6 @@ class MainWindow(QMainWindow):
         self.tab_widget.addTab(self.reports_tab, "📈 Отчеты")
         layout.addWidget(self.tab_widget)
 
-        # Статус бар
         self.statusBar().showMessage(
             f"Пользователь: {self.user_data['full_name']} | "
             f"Роль: {self.user_data['role']} | Система готова"
@@ -83,13 +76,11 @@ class MainWindow(QMainWindow):
         help_menu.addAction(about_action)
 
     def setup_timer(self):
-        """Настройка таймера для обновления данных"""
         self.update_timer = QTimer()
         self.update_timer.timeout.connect(self.update_data)
         self.update_timer.start(5000)
 
     def update_data(self):
-        """Обновление данных в реальном времени"""
         self.monitoring_tab.refresh_data()
         current_time = datetime.now().strftime("%H:%M:%S")
         self.statusBar().showMessage(
@@ -98,23 +89,17 @@ class MainWindow(QMainWindow):
             f"Обновлено: {current_time}"
         )
 
-    # В методе manage_pools заменить на:
     def manage_pools(self):
-        """Открыть окно управления бассейнами"""
         from gui.dialogs.pool_dialog import PoolManagerDialog
         dialog = PoolManagerDialog(self.db_manager, self)
         dialog.exec()
 
     def manage_sensors(self):
-        """Открыть окно управления датчиками"""
         from gui.dialogs.sensor_dialog import SensorManagerDialog
         dialog = SensorManagerDialog(self.db_manager, self)
         dialog.exec()
 
-    # В core/database.py добавить:
-
     def get_sensor_readings(self, sensor_id, limit=100):
-        """Получить показания конкретного датчика"""
         try:
             query = """
                 SELECT * FROM Sensor_Readings 
@@ -129,7 +114,6 @@ class MainWindow(QMainWindow):
             return []
 
     def show_about(self):
-        """Показать окно 'О программе'"""
         QMessageBox.about(
             self,
             "О программе FishHub",
@@ -151,14 +135,9 @@ class MainWindow(QMainWindow):
             print(f"Ошибка при выходе: {e}")
 
     def handle_exit(self):
-        """Обработка выхода через меню"""
         self.close()
 
     def closeEvent(self, event):
-        """
-        При закрытии окна ставим пользователю статус 'Отключён'
-        и корректно завершаем соединение.
-        """
         try:
             user_id = self.user_data.get("id")
             if user_id:

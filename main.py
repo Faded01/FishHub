@@ -47,7 +47,6 @@ def excepthook(exc_type, exc_value, exc_tb):
 
 sys.excepthook = excepthook
 
-
 def get_fallback_styles():
     return """
 

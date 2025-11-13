@@ -81,7 +81,6 @@ class SensorReadingsDialog(QDialog):
         self.setLayout(layout)
 
     def load_readings(self):
-        """Загрузка показаний датчика"""
         try:
             query = """
                 SELECT * FROM Sensor_Readings 
@@ -104,14 +103,12 @@ class SensorReadingsDialog(QDialog):
                 self.readings_table.setItem(row, 2, QTableWidgetItem(reading['Status_Readings']))
                 self.readings_table.setItem(row, 3, QTableWidgetItem(time_str))
 
-            # Автоподбор ширины колонок после заполнения данных
             self.readings_table.resizeColumnsToContents()
 
         except Exception as e:
             QMessageBox.critical(self, "Ошибка", f"Ошибка загрузки показаний: {e}")
 
     def add_reading(self):
-        """Добавление новых показаний"""
         try:
             value = self.value_input.value()
             status = self.status_combo.currentText()

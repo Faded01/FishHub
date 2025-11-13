@@ -1,7 +1,6 @@
 import sqlite3
 from datetime import datetime
 
-
 class DatabaseManager:
     def __init__(self, db_path="data/fishhub.db"):
         self.db_path = db_path
@@ -19,10 +18,9 @@ class DatabaseManager:
             print(f"[DB] Успешное подключение к {self.db_path}")
         except sqlite3.Error as e:
             print(f"[DB ERROR] Не удалось подключиться к базе данных: {e}")
-            raise  # переброс исключения для отладки
+            raise
 
     def is_connected(self):
-        """Проверяет активное соединение с БД"""
         try:
             self.cursor.execute("SELECT 1")
             return True
@@ -40,9 +38,6 @@ class DatabaseManager:
         except Exception as e:
             print(f'[DB ERROR] Ошибка при закрытии соединения: {e}')
 
-    # ------------------------
-    # Работа с пользователями
-    # ------------------------
     def check_user(self, username: str, password: str):
         try:
             query = """
@@ -82,9 +77,6 @@ class DatabaseManager:
             return None
 
     def update_user_status_by_id(self, user_id: int, status: str):
-        """
-        Обновляет статус пользователя (Активен / Отключён)
-        """
         try:
             query = "UPDATE Employees SET Status = ? WHERE ID_User = ?"
             self.cursor.execute(query, (status, user_id))
@@ -94,7 +86,6 @@ class DatabaseManager:
             print(f"[DB ERROR] Не удалось обновить статус пользователя: {e}")
 
     def add_user(self, username, password, name, surname, patronymic, role_id):
-        """Добавляет нового пользователя"""
         try:
             query = """
                 INSERT INTO Employees (Username, Password_User, Name_User, Surname_User, Patronymic_User, Role_ID)
@@ -106,11 +97,7 @@ class DatabaseManager:
         except sqlite3.Error as e:
             print(f"[DB ERROR] Не удалось добавить пользователя: {e}")
 
-    # ------------------------
-    # Работа с бассейнами
-    # ------------------------
     def get_all_pools(self):
-        """Получить все бассейны"""
         try:
             self.cursor.execute("SELECT * FROM Pools ORDER BY ID_Pool")
             return self.cursor.fetchall()
@@ -119,7 +106,6 @@ class DatabaseManager:
             return []
 
     def get_pool_by_id(self, pool_id):
-        """Получить бассейн по ID"""
         try:
             self.cursor.execute("SELECT * FROM Pools WHERE ID_Pool = ?", (pool_id,))
             return self.cursor.fetchone()
@@ -128,7 +114,6 @@ class DatabaseManager:
             return None
 
     def add_pool(self, name, volume, fish_type, fish_count, stocking_date, status):
-        """Добавить новый бассейн"""
         try:
             query = """
                 INSERT INTO Pools (Name_Pool, Volume_Pool, Fish_Type, Fish_Count, Stocking_Date, Status_Pool)
@@ -142,7 +127,6 @@ class DatabaseManager:
             return False
 
     def update_pool(self, pool_id, name, volume, fish_type, fish_count, stocking_date, status):
-        """Обновить бассейн"""
         try:
             query = """
                 UPDATE Pools 
@@ -158,7 +142,6 @@ class DatabaseManager:
             return False
 
     def delete_pool(self, pool_id):
-        """Удалить бассейн"""
         try:
             self.cursor.execute("DELETE FROM Pools WHERE ID_Pool = ?", (pool_id,))
             self.connection.commit()
@@ -167,11 +150,7 @@ class DatabaseManager:
             print(f"[DB ERROR] Ошибка удаления бассейна: {e}")
             return False
 
-    # ------------------------
-    # Работа с датчиками
-    # ------------------------
     def get_sensors_by_pool(self, pool_id):
-        """Получить датчики для бассейна"""
         try:
             self.cursor.execute("SELECT * FROM Sensors WHERE ID_Pool = ?", (pool_id,))
             return self.cursor.fetchall()
@@ -180,7 +159,6 @@ class DatabaseManager:
             return []
 
     def get_sensors_by_pool_with_range(self, pool_id):
-        """Получить датчики для бассейна с информацией о диапазонах"""
         try:
             self.cursor.execute(
                 "SELECT * FROM Sensors WHERE ID_Pool = ?", (pool_id,)
@@ -191,7 +169,6 @@ class DatabaseManager:
             return []
 
     def add_sensor_reading(self, sensor_id, value, status="Норма"):
-        """Добавить показания датчика"""
         try:
             query = """
                 INSERT INTO Sensor_Readings (ID_Sensor, Value_Sensor, Timestamp_Sensor, Status_Readings)
@@ -205,7 +182,6 @@ class DatabaseManager:
             return False
 
     def get_sensor_readings(self, sensor_id):
-        """Получить показания конкретного датчика"""
         try:
             query = """
                 SELECT * FROM Sensor_Readings 
@@ -219,7 +195,6 @@ class DatabaseManager:
             return []
 
     def get_latest_sensor_readings(self, pool_id=None):
-        """Получить последние показания датчиков"""
         try:
             if pool_id:
                 query = """
@@ -244,7 +219,6 @@ class DatabaseManager:
             return []
 
     def get_sensor_readings_with_pool_info(self, pool_id=None, sensor_type=None):
-        """Получить показания с информацией о бассейнах"""
         try:
             query = """
                 SELECT sr.*, s.Type_Sensor, s.Range_Min, s.Range_Max, p.Name_Pool, p.ID_Pool
@@ -272,7 +246,6 @@ class DatabaseManager:
             return []
 
     def get_all_sensor_readings_for_pool(self, pool_id, sensor_type=None):
-        """Получить ВСЕ показания датчиков для конкретного бассейна"""
         try:
             query = """
                 SELECT sr.*, s.Type_Sensor, s.ID_Pool 
@@ -293,11 +266,8 @@ class DatabaseManager:
         except sqlite3.Error as e:
             print(f"[DB ERROR] Ошибка получения показаний для бассейна: {e}")
             return []
-    # ------------------------
-    # Работа с кормлениями
-    # ------------------------
+
     def get_feeding_history(self, pool_id=None):
-        """Получить историю кормлений"""
         try:
             if pool_id:
                 query = """
@@ -322,7 +292,6 @@ class DatabaseManager:
             return []
 
     def add_feeding(self, pool_id, feed_type, feed_amount, feeding_time, feeding_method):
-        """Добавить запись о кормлении"""
         try:
             query = """
                 INSERT INTO Feedings (ID_Pool, Feed_Type, Feed_Amount, Feeding_Time, Feeding_Method)
@@ -336,7 +305,6 @@ class DatabaseManager:
             return False
 
     def get_feeding_statistics(self, period_days=30):
-        """Получить статистику кормления"""
         try:
             query = """
                 SELECT 
@@ -351,11 +319,7 @@ class DatabaseManager:
             print(f"[DB ERROR] Ошибка получения статистики: {e}")
             return None
 
-    # ------------------------
-    # Работа с отчетами
-    # ------------------------
     def get_reports_data(self, report_type=None, start_date=None, end_date=None):
-        """Получение всех данных отчетов из таблицы Reports"""
         try:
             query = """
                 SELECT r.*, p.Name_Pool, u.Name_User, u.Surname_User 
@@ -393,7 +357,6 @@ class DatabaseManager:
             return []
 
     def get_all_report_types(self):
-        """Получение всех типов отчетов из базы"""
         try:
             query = "SELECT DISTINCT Report_Type FROM Reports ORDER BY Report_Type"
             self.cursor.execute(query)
@@ -404,7 +367,6 @@ class DatabaseManager:
             return []
 
     def add_report(self, pool_id, user_id, report_type, period_start, period_end, report_data):
-        """Добавление отчета в базу данных"""
         try:
             query = """
                 INSERT INTO Reports (ID_Pool, ID_User, Report_Type, Period_Start, 
@@ -420,7 +382,6 @@ class DatabaseManager:
             return False
 
     def get_monitoring_data_for_period(self, start_date, end_date):
-        """Получение всех данных мониторинга за период"""
         try:
             query = """
                 SELECT sr.Timestamp_Sensor, p.Name_Pool, s.Type_Sensor, 
@@ -444,7 +405,6 @@ class DatabaseManager:
             return []
 
     def get_feeding_data_for_period(self, start_date, end_date):
-        """Получение всех данных кормления за период"""
         try:
             query = """
                 SELECT f.Feeding_Time, p.Name_Pool, f.Feed_Type, 
@@ -467,7 +427,6 @@ class DatabaseManager:
             return []
 
     def get_growth_data_for_period(self, start_date, end_date):
-        """Получение всех данных роста рыбы за период"""
         try:
             query = """
                 SELECT cc.Fishing_Date, p.Name_Pool, cc.Average_Weight, 
@@ -490,7 +449,6 @@ class DatabaseManager:
             return []
 
     def get_sensor_statistics(self, start_date, end_date):
-        """Получение статистики по датчикам за период"""
         try:
             query = """
                 SELECT 
@@ -520,7 +478,6 @@ class DatabaseManager:
             return []
 
     def get_feeding_statistics_for_period(self, start_date, end_date):
-        """Получение статистики кормления за период"""
         try:
             query = """
                 SELECT 
@@ -548,7 +505,6 @@ class DatabaseManager:
             return []
 
     def get_reports(self, report_type=None, start_date=None, end_date=None):
-        """Получить отчеты"""
         try:
             base_query = """
                 SELECT r.*, p.Name_Pool, u.Name_User 
@@ -577,11 +533,7 @@ class DatabaseManager:
             print(f"[DB ERROR] Ошибка получения отчетов: {e}")
             return []
 
-    # ------------------------
-    # Общие методы для работы с таблицами
-    # ------------------------
     def get_all_data(self, table_name):
-        """Получить все данные из указанной таблицы"""
         try:
             query = f"SELECT * FROM {table_name}"
             self.cursor.execute(query)
@@ -591,17 +543,15 @@ class DatabaseManager:
             return []
 
     def get_table_columns(self, table_name):
-        """Получить названия колонок таблицы"""
         try:
             self.cursor.execute(f"PRAGMA table_info({table_name})")
             columns_info = self.cursor.fetchall()
-            return [column[1] for column in columns_info]  # column[1] - название колонки
+            return [column[1] for column in columns_info]
         except sqlite3.Error as e:
             print(f"[DB ERROR] Ошибка получения колонок таблицы {table_name}: {e}")
             return []
 
     def get_table_names(self):
-        """Получить список всех таблиц в базе данных"""
         try:
             self.cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
             tables = self.cursor.fetchall()
@@ -611,7 +561,6 @@ class DatabaseManager:
             return []
 
     def create_indexes(self):
-        """Создание индексов для ускорения работы БД"""
         try:
             indexes = [
                 "CREATE INDEX IF NOT EXISTS idx_sensor_readings_timestamp ON Sensor_Readings(Timestamp_Sensor DESC)",
@@ -633,7 +582,6 @@ class DatabaseManager:
             print(f"[DB ERROR] Ошибка создания индексов: {e}")
 
     def get_optimized_sensor_readings(self, pool_id=None, limit=50):
-        """Оптимизированный запрос показаний датчиков"""
         try:
             query = """
                 SELECT sr.*, s.Type_Sensor, s.ID_Pool 

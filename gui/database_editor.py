@@ -473,7 +473,6 @@ class DatabaseEditorWindow(QWidget):
     def logout(self):
         try:
             self.close()
-
             from gui.login_window import LoginWindow
             self.login_window = LoginWindow(self.db_manager)
             self.login_window.show()

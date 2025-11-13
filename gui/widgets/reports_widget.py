@@ -97,7 +97,6 @@ class ReportsWidget(QWidget):
         self.setLayout(layout)
 
     def load_report_types(self):
-        """Загрузка типов отчетов"""
         try:
             self.report_type_combo.clear()
             self.report_type_combo.addItem("Все отчеты")
@@ -109,7 +108,6 @@ class ReportsWidget(QWidget):
             print(f"Ошибка загрузки типов отчетов: {e}")
 
     def load_report_data(self):
-        """Загрузка данных отчетов"""
         try:
             report_type = self.report_type_combo.currentText()
             if report_type == "Все отчеты":
@@ -127,38 +125,31 @@ class ReportsWidget(QWidget):
             print(f"Ошибка загрузки данных отчетов: {e}")
 
     def update_report_table(self):
-        """Обновление таблицы с отчетами"""
         try:
             self.report_table.setRowCount(len(self.current_report_data))
 
             for row, report in enumerate(self.current_report_data):
-                # Заполняем данные таблицы
                 self.report_table.setItem(row, 0, QTableWidgetItem(str(report.get('ID_Report', ''))))
                 self.report_table.setItem(row, 1, QTableWidgetItem(report.get('Report_Type', '')))
                 self.report_table.setItem(row, 2, QTableWidgetItem(report.get('Name_Pool', 'Не указан')))
 
-                # Период
                 period_start = report.get('Period_Start', '')
                 period_end = report.get('Period_End', '')
                 period_text = f"{period_start} - {period_end}" if period_start and period_end else "Не указан"
                 self.report_table.setItem(row, 3, QTableWidgetItem(period_text))
 
-                # Автор
                 author_name = f"{report.get('Surname_User', '')} {report.get('Name_User', '')}".strip()
                 author_name = author_name if author_name else "Неизвестно"
                 self.report_table.setItem(row, 4, QTableWidgetItem(author_name))
 
-                # Дата создания
                 date_formation = report.get('Date_Formation', '')
                 date_str = str(date_formation)[:16] if date_formation else "Не указана"
                 self.report_table.setItem(row, 5, QTableWidgetItem(date_str))
 
-                # Статус
                 has_data = bool(report.get('Report_Data'))
                 status = "Заполнен" if has_data else "Пустой"
                 self.report_table.setItem(row, 6, QTableWidgetItem(status))
 
-                # Кнопка просмотра
                 view_btn = QPushButton("Просмотр")
                 view_btn.setFixedSize(70, 25)
                 view_btn.setStyleSheet("font-size: 10px; padding: 2px;")
@@ -171,7 +162,6 @@ class ReportsWidget(QWidget):
             print(f"Ошибка обновления таблицы: {e}")
 
     def view_report_details(self, row):
-        """Просмотр деталей отчета"""
         try:
             if row < len(self.current_report_data):
                 report = self.current_report_data[row]
@@ -189,13 +179,11 @@ class ReportsWidget(QWidget):
             print(f"Ошибка отображения деталей отчета: {e}")
 
     def export_report_to_excel(self):
-        """Экспорт отчетов в Excel"""
         try:
             if not self.current_report_data:
                 QMessageBox.warning(self, "Ошибка", "Нет данных для экспорта!")
                 return
 
-            # Подготовка данных для экспорта
             headers = ["ID", "Тип отчета", "Бассейн", "Период", "Автор", "Дата создания", "Статус"]
             data_for_export = []
 
@@ -220,7 +208,6 @@ class ReportsWidget(QWidget):
                     status
                 ])
 
-            # Используем ExcelExporter для экспорта
             success, message = ExcelExporter.export_table_to_excel(
                 data=data_for_export,
                 columns=headers,
@@ -236,7 +223,6 @@ class ReportsWidget(QWidget):
             QMessageBox.critical(self, "Ошибка", f"Ошибка экспорта: {str(e)}")
 
     def create_new_report(self):
-        """Создание нового отчета"""
         try:
             dialog = ReportDialog(self.db_manager, self.user_data, self)
             result = dialog.exec()
