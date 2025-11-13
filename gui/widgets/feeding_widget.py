@@ -17,22 +17,18 @@ class FeedingWidget(QWidget):
     def init_ui(self):
         layout = QVBoxLayout()
 
-        # Заголовок
         title = QLabel("Управление кормлением")
         title.setObjectName("widgetTitle")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(title)
 
-        # Форма добавления кормления
         form_group = QGroupBox("Добавить кормление")
         form_layout = QFormLayout()
 
-        # Выбор бассейна
         self.pool_combo = QComboBox()
         self.load_pools()
         form_layout.addRow("Бассейн:", self.pool_combo)
 
-        # Тип корма
         self.feed_type_combo = QComboBox()
         self.feed_type_combo.addItems([
             "Стартовый",
@@ -46,7 +42,6 @@ class FeedingWidget(QWidget):
         ])
         form_layout.addRow("Тип корма:", self.feed_type_combo)
 
-        # Количество корма
         self.amount_input = QDoubleSpinBox()
         self.amount_input.setRange(0.1, 100.0)
         self.amount_input.setSingleStep(0.1)
@@ -54,12 +49,10 @@ class FeedingWidget(QWidget):
         self.amount_input.setSuffix(" кг")
         form_layout.addRow("Количество:", self.amount_input)
 
-        # Метод кормления
         self.method_combo = QComboBox()
         self.method_combo.addItems(["Автоматический", "Вручную"])
         form_layout.addRow("Метод:", self.method_combo)
 
-        # Кнопка добавления
         self.add_btn = QPushButton("Добавить кормление")
         self.add_btn.clicked.connect(self.add_feeding)
         form_layout.addRow(self.add_btn)
@@ -67,7 +60,6 @@ class FeedingWidget(QWidget):
         form_group.setLayout(form_layout)
         layout.addWidget(form_group)
 
-        # История кормлений
         history_group = QGroupBox("История кормлений")
         history_layout = QVBoxLayout()
 
@@ -77,7 +69,6 @@ class FeedingWidget(QWidget):
             "Бассейн", "Тип корма", "Количество", "Время", "Метод", "Дата"
         ])
 
-        # Настройка ширины колонок - растягиваем равномерно
         header = self.feeding_table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
@@ -86,15 +77,13 @@ class FeedingWidget(QWidget):
         header.setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)
 
-        # Устанавливаем минимальные ширины для важных колонок
-        self.feeding_table.setColumnWidth(1, 150)  # Тип корма
-        self.feeding_table.setColumnWidth(2, 100)  # Количество
+        self.feeding_table.setColumnWidth(1, 150)
+        self.feeding_table.setColumnWidth(2, 100)
 
         history_layout.addWidget(self.feeding_table)
         history_group.setLayout(history_layout)
         layout.addWidget(history_group)
 
-        # Статистика
         stats_group = QGroupBox("Статистика кормления")
         stats_layout = QHBoxLayout()
 

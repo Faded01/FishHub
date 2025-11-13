@@ -53,10 +53,8 @@ class MainWindow(QMainWindow):
         )
 
     def create_menu(self):
-        """Создание меню приложения"""
         menubar = self.menuBar()
 
-        # Меню "Файл"
         file_menu = menubar.addMenu('Файл')
 
         logout_action = QAction('Выход из учётной записи', self)
@@ -69,7 +67,6 @@ class MainWindow(QMainWindow):
         exit_action.triggered.connect(self.handle_exit)
         file_menu.addAction(exit_action)
 
-        # Меню "Управление"
         manage_menu = menubar.addMenu('Управление')
 
         pools_action = QAction('Бассейны', self)
@@ -80,7 +77,6 @@ class MainWindow(QMainWindow):
         sensors_action.triggered.connect(self.manage_sensors)
         manage_menu.addAction(sensors_action)
 
-        # Меню "Справка"
         help_menu = menubar.addMenu('Справка')
         about_action = QAction('О программе', self)
         about_action.triggered.connect(self.show_about)

@@ -7,7 +7,6 @@ from PyQt6.QtCore import Qt, QTimer
 
 
 class MonitoringWidget(QWidget):
-    # Константы для единиц измерения
     SENSOR_UNITS = {
         'Температура': '°C',
         'Кислород': ' мг/л',
@@ -26,7 +25,6 @@ class MonitoringWidget(QWidget):
         layout = QVBoxLayout()
         layout.setSpacing(10)
 
-        # Заголовок и выбор бассейна
         header_layout = QHBoxLayout()
         title = QLabel("Мониторинг параметров водной среды")
         title.setObjectName("widgetTitle")
@@ -40,11 +38,9 @@ class MonitoringWidget(QWidget):
 
         layout.addLayout(header_layout)
 
-        # Текущие показания
         current_group = QGroupBox("Текущие показания")
         current_layout = QGridLayout()
 
-        # Создаем метки для основных параметров
         self.param_labels = {}
         for i, (param, unit) in enumerate(self.SENSOR_UNITS.items()):
             label = QLabel(f"{param}: --{unit}")
@@ -55,7 +51,6 @@ class MonitoringWidget(QWidget):
         current_group.setLayout(current_layout)
         layout.addWidget(current_group)
 
-        # Статус бассейна
         status_group = QGroupBox("Статус бассейна")
         status_layout = QHBoxLayout()
 
@@ -73,11 +68,9 @@ class MonitoringWidget(QWidget):
         status_group.setLayout(status_layout)
         layout.addWidget(status_group)
 
-        # История показаний с фильтрацией
         history_group = QGroupBox("История показаний")
         history_layout = QVBoxLayout()
 
-        # Фильтры
         filter_layout = QHBoxLayout()
         self.sensor_type_combo = QComboBox()
         self.sensor_type_combo.addItems(["Все датчики", "Температура", "Кислород", "pH"])
@@ -106,7 +99,6 @@ class MonitoringWidget(QWidget):
         history_group.setLayout(history_layout)
         layout.addWidget(history_group)
 
-        # Кнопки управления
         button_layout = QHBoxLayout()
         self.refresh_btn = QPushButton("Обновить")
         self.refresh_btn.clicked.connect(self.refresh_data)
@@ -117,7 +109,6 @@ class MonitoringWidget(QWidget):
         layout.addLayout(button_layout)
         self.setLayout(layout)
 
-        # Загружаем список бассейнов
         self.load_pools()
 
     def load_pools(self):

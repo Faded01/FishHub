@@ -12,7 +12,6 @@ def ensure_backup_styles():
     if not backup_path.exists():
         backup_path.parent.mkdir(exist_ok=True)
 
-        # Создаем резервный файл
         fallback_styles = get_fallback_styles()
         with open(backup_path, 'w', encoding='utf-8') as f:
             f.write(fallback_styles)
@@ -20,12 +19,11 @@ def ensure_backup_styles():
 
     return backup_path
 
-
 def load_styles():
     ensure_backup_styles()
 
     paths_to_try = [
-        'data/light_theme.qss',
+        'data/styles.qss',
         'data/backup_styles.qss',
     ]
 
@@ -53,12 +51,10 @@ sys.excepthook = excepthook
 def get_fallback_styles():
     return """
 
-/* Главное окно */
 QMainWindow {
     background: #e3f2fd;
 }
 
-/* Карточки */
 #card {
     background: white;
     border-radius: 8px;
@@ -66,14 +62,12 @@ QMainWindow {
     border: 1px solid #90caf9;
 }
 
-/* Заголовки */
 #titleLabel, #widgetTitle, #dialogTitle {
     font-size: 20px;
     font-weight: bold;
     color: #1565c0;
 }
 
-/* Поля ввода */
 QLineEdit, QTextEdit, QComboBox {
     padding: 8px;
     border: 1px solid #90caf9;
@@ -85,7 +79,6 @@ QLineEdit:focus, QTextEdit:focus, QComboBox:focus {
     border-color: #1976d2;
 }
 
-/* Кнопки */
 QPushButton {
     background: #2196f3;
     color: white;
@@ -106,7 +99,6 @@ QPushButton:hover {
     background: #388e3c;
 }
 
-/* Таблицы */
 QTableView, QTableWidget {
     background: white;
     border: 1px solid #90caf9;
@@ -118,7 +110,6 @@ QHeaderView::section {
     padding: 6px;
 }
 
-/* Группы */
 QGroupBox {
     border: 1px solid #90caf9;
     border-radius: 6px;
@@ -129,7 +120,6 @@ QGroupBox::title {
     color: #1565c0;
 }
 
-/* Вкладки */
 QTabBar::tab {
     background: #bbdefb;
     padding: 8px 12px;
@@ -140,7 +130,6 @@ QTabBar::tab:selected {
     color: white;
 }
 
-/* Статус бар */
 QStatusBar {
     background: #1976d2;
     color: white;

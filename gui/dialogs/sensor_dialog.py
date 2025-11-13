@@ -13,7 +13,7 @@ class SensorManagerDialog(QDialog):
         self.db_manager = db_manager
         self.setWindowTitle("Управление датчиками")
         self.setModal(True)
-        self.setMinimumSize(1200, 800)  # Увеличил минимальный размер
+        self.setMinimumSize(1200, 800)
         self.init_ui()
         self.load_sensors()
 
@@ -21,23 +21,19 @@ class SensorManagerDialog(QDialog):
         layout = QVBoxLayout()
         layout.setSpacing(10)
 
-        # Заголовок
         title = QLabel("Управление датчиками")
         title.setObjectName("dialogTitle")
         layout.addWidget(title)
 
-        # Форма добавления/редактирования
         form_group = QGroupBox("Добавить/Редактировать датчик")
         form_layout = QFormLayout()
         form_layout.setVerticalSpacing(8)
 
-        # Выбор бассейна
         self.pool_combo = QComboBox()
         self.pool_combo.setMinimumWidth(300)
         self.load_pools()
         form_layout.addRow("Бассейн:", self.pool_combo)
 
-        # Тип датчика
         self.type_combo = QComboBox()
         self.type_combo.setMinimumWidth(200)
         self.type_combo.addItems([
@@ -50,14 +46,12 @@ class SensorManagerDialog(QDialog):
         ])
         form_layout.addRow("Тип датчика:", self.type_combo)
 
-        # Модель датчика
         self.model_input = QLineEdit()
         self.model_input.setPlaceholderText("Модель датчика")
         self.model_input.setMinimumWidth(200)
         self.model_input.setMaxLength(50)
         form_layout.addRow("Модель:", self.model_input)
 
-        # Диапазон измерений
         range_layout = QHBoxLayout()
         self.range_min_input = QDoubleSpinBox()
         self.range_min_input.setRange(-1000, 1000)
@@ -78,14 +72,12 @@ class SensorManagerDialog(QDialog):
 
         form_layout.addRow("Диапазон измерений:", range_layout)
 
-        # Дата установки
         self.installation_date = QDateEdit()
         self.installation_date.setDate(QDate.currentDate())
         self.installation_date.setCalendarPopup(True)
         self.installation_date.setMinimumWidth(120)
         form_layout.addRow("Дата установки:", self.installation_date)
 
-        # Кнопки формы
         form_buttons_layout = QHBoxLayout()
         form_buttons_layout.setSpacing(10)
 
@@ -112,7 +104,6 @@ class SensorManagerDialog(QDialog):
         form_group.setLayout(form_layout)
         layout.addWidget(form_group)
 
-        # Таблица датчиков
         table_group = QGroupBox("Список датчиков")
         table_layout = QVBoxLayout()
 
@@ -123,25 +114,21 @@ class SensorManagerDialog(QDialog):
             "Диапазон до", "Дата установки", "Последние показания"
         ])
 
-        # ФИКСИРОВАННЫЕ ШИРИНЫ КОЛОНОК
-        self.sensors_table.setColumnWidth(0, 50)    # ID
-        self.sensors_table.setColumnWidth(1, 150)   # Бассейн
-        self.sensors_table.setColumnWidth(2, 120)   # Тип
-        self.sensors_table.setColumnWidth(3, 180)   # Модель
-        self.sensors_table.setColumnWidth(4, 100)   # Диапазон от
-        self.sensors_table.setColumnWidth(5, 100)   # Диапазон до
-        self.sensors_table.setColumnWidth(6, 120)   # Дата установки
-        self.sensors_table.setColumnWidth(7, 180)   # Последние показания
+        self.sensors_table.setColumnWidth(0, 50)
+        self.sensors_table.setColumnWidth(1, 150)
+        self.sensors_table.setColumnWidth(2, 120)
+        self.sensors_table.setColumnWidth(3, 180)
+        self.sensors_table.setColumnWidth(4, 100)
+        self.sensors_table.setColumnWidth(5, 100)
+        self.sensors_table.setColumnWidth(6, 120)
+        self.sensors_table.setColumnWidth(7, 180)
 
-        # Растягиваем последнюю колонку
         header = self.sensors_table.horizontalHeader()
         header.setSectionResizeMode(7, QHeaderView.ResizeMode.Stretch)
 
-        # Подключаем обработчик выбора строки
         self.sensors_table.cellClicked.connect(self.on_cell_clicked)
         table_layout.addWidget(self.sensors_table)
 
-        # Кнопки управления таблицей
         table_buttons_layout = QHBoxLayout()
         table_buttons_layout.setSpacing(10)
 
@@ -166,7 +153,6 @@ class SensorManagerDialog(QDialog):
         table_group.setLayout(table_layout)
         layout.addWidget(table_group)
 
-        # Кнопки диалога
         close_button = QPushButton("Закрыть")
         close_button.clicked.connect(self.reject)
         button_layout = QHBoxLayout()

@@ -22,12 +22,10 @@ class SensorReadingsDialog(QDialog):
         layout = QVBoxLayout()
         layout.setSpacing(10)
 
-        # Заголовок
         title = QLabel(f"Показания датчика")
         title.setObjectName("dialogTitle")
         layout.addWidget(title)
 
-        # Форма добавления показаний
         form_group = QGroupBox("Добавить показания")
         form_layout = QFormLayout()
 
@@ -41,7 +39,6 @@ class SensorReadingsDialog(QDialog):
         self.status_combo.addItems(["Норма", "Предупреждение", "Критично"])
         form_layout.addRow("Статус:", self.status_combo)
 
-        # Кнопки формы
         form_buttons_layout = QHBoxLayout()
         self.add_btn = QPushButton("Добавить показания")
         self.add_btn.clicked.connect(self.add_reading)
@@ -49,13 +46,10 @@ class SensorReadingsDialog(QDialog):
 
         form_buttons_layout.addWidget(self.add_btn)
         form_buttons_layout.addStretch()
-
         form_layout.addRow(form_buttons_layout)
-
         form_group.setLayout(form_layout)
         layout.addWidget(form_group)
 
-        # Таблица показаний
         table_group = QGroupBox("История показаний")
         table_layout = QVBoxLayout()
 
@@ -65,13 +59,11 @@ class SensorReadingsDialog(QDialog):
             "ID записи", "Значение", "Статус", "Время"
         ])
 
-        # ФИКСИРОВАННЫЕ ШИРИНЫ КОЛОНОК
-        self.readings_table.setColumnWidth(0, 80)   # ID записи
-        self.readings_table.setColumnWidth(1, 100)  # Значение
-        self.readings_table.setColumnWidth(2, 120)  # Статус
-        self.readings_table.setColumnWidth(3, 150)  # Время
+        self.readings_table.setColumnWidth(0, 80)
+        self.readings_table.setColumnWidth(1, 100)
+        self.readings_table.setColumnWidth(2, 120)
+        self.readings_table.setColumnWidth(3, 150)
 
-        # Растягиваем последнюю колонку
         header = self.readings_table.horizontalHeader()
         header.setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
 
@@ -79,7 +71,6 @@ class SensorReadingsDialog(QDialog):
         table_group.setLayout(table_layout)
         layout.addWidget(table_group)
 
-        # Кнопки диалога
         close_button = QPushButton("Закрыть")
         close_button.clicked.connect(self.reject)
         button_layout = QHBoxLayout()

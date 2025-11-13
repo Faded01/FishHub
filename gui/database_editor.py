@@ -28,25 +28,20 @@ class DatabaseEditorWindow(QWidget):
 
         self.setMinimumSize(1300, 800)
 
-        # Основной layout
         main_layout = QVBoxLayout()
 
-        # Контейнер для содержимого с отступами
         content_widget = QWidget()
         content_layout = QVBoxLayout(content_widget)
         content_layout.setContentsMargins(20, 20, 20, 20)
 
-        # Верхняя панель с кнопками
         top_panel_layout = QHBoxLayout()
 
-        # Выбор таблицы
         top_panel_layout.addWidget(QLabel("Выберите таблицу:"))
         self.table_combo = QComboBox()
         self.load_table_names()
         self.table_combo.currentTextChanged.connect(self.load_table_data)
         top_panel_layout.addWidget(self.table_combo)
 
-        # Кнопки управления
         self.btn_save = QPushButton("Сохранить изменения")
         self.btn_save.clicked.connect(self.save_changes)
         self.btn_refresh = QPushButton("Обновить")
@@ -65,24 +60,18 @@ class DatabaseEditorWindow(QWidget):
         top_panel_layout.addWidget(self.btn_export)
         top_panel_layout.addStretch()
 
-
-        # Таблица данных
         self.table_view = QTableView()
         self.table_view.setAlternatingRowColors(True)
 
-        # Настройка отображения таблицы
         header = self.table_view.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
 
-        # Модель данных
         self.model = QStandardItemModel()
         self.model.itemChanged.connect(self.on_cell_changed)
         self.table_view.setModel(self.model)
 
-        # Статус бар
         self.status_label = QLabel("Готов к работе")
 
-        # Собираем layout
         content_layout.addLayout(top_panel_layout)
         content_layout.addWidget(self.table_view)
         content_layout.addWidget(self.status_label)
@@ -110,10 +99,8 @@ class DatabaseEditorWindow(QWidget):
 
         self.current_table = table_name
         try:
-            # Для больших таблиц ограничиваем количество строк при первом показе
             data = self.db_manager.get_all_data(table_name)
 
-            # Если записей много, показываем предупреждение
             if len(data) > 1000:
                 self.status_label.setText(
                     f"Загружена таблица: {russian_table_name} | Записей: {len(data)} (рекомендуется использовать фильтры)")
@@ -135,15 +122,13 @@ class DatabaseEditorWindow(QWidget):
                 self.model.setHeaderData(i, Qt.Orientation.Horizontal, Qt.AlignmentFlag.AlignCenter,
                                          Qt.ItemDataRole.TextAlignmentRole)
 
-            # Автоподбор ширины только для видимых колонок
-            for i in range(min(self.model.columnCount(), 10)):  # Первые 10 колонок
+            for i in range(min(self.model.columnCount(), 10)):
                 self.table_view.setColumnWidth(i, 150)
 
         except Exception as e:
             self.show_error(f"Ошибка загрузки таблицы: {str(e)}")
 
     def load_table_names(self):
-        """Автоматическая загрузка таблиц с русскими названиями"""
         table_mapping = {
             "Employees": "Сотрудники",
             "Roles": "Роли",
@@ -162,10 +147,7 @@ class DatabaseEditorWindow(QWidget):
             russian_name = table_mapping.get(table, table)
             self.table_combo.addItem(russian_name, table)
 
-    # ... остальные методы без изменений
-
     def get_russian_columns(self, table_name):
-        """Возвращает русские названия колонок для таблицы"""
         columns_mapping = {
             "Employees": {
                 "ID_User": "ID пользователя",
@@ -249,7 +231,6 @@ class DatabaseEditorWindow(QWidget):
         return russian_columns
 
     def on_cell_changed(self, item):
-        """Обработчик изменения ячейки - автоматическое сохранение"""
         if self.current_table:
             row = item.row()
             column = item.column()
@@ -257,7 +238,6 @@ class DatabaseEditorWindow(QWidget):
             self.status_label.setText("Изменения не сохранены (автосохранение через 10 сек)")
 
     def auto_save(self):
-        """Автоматическое сохранение измененных ячеек"""
         if self.modified_cells and self.current_table:
             try:
                 self.save_modified_cells()
@@ -267,7 +247,6 @@ class DatabaseEditorWindow(QWidget):
                 self.status_label.setText(f"Ошибка автосохранения: {str(e)}")
 
     def save_modified_cells(self):
-        """Сохранение измененных ячеек с учетом новых строк"""
         try:
             table_name = self.table_combo.currentData()
             columns = self.db_manager.get_table_columns(table_name)
@@ -283,9 +262,7 @@ class DatabaseEditorWindow(QWidget):
                 new_value = self.model.item(row, col).text()
                 column_name = columns[col]
 
-                # Если primary_key пустой - это новая строка, нужно вставить
                 if not primary_key.strip():
-                    # Создаем новую строку в БД
                     placeholders = ", ".join(["?" for _ in range(len(columns))])
                     column_names = ", ".join(columns)
 
@@ -298,13 +275,11 @@ class DatabaseEditorWindow(QWidget):
                     self.db_manager.cursor.execute(query, values)
                     self.db_manager.connection.commit()
 
-                    # Обновляем ID в интерфейсе
                     new_id = self.db_manager.cursor.lastrowid
                     if new_id:
                         self.model.item(row, primary_key_col).setText(str(new_id))
 
                 else:
-                    # Обновляем существующую строку
                     query = f"UPDATE {table_name} SET {column_name} = ? WHERE {columns[0]} = ?"
                     self.db_manager.cursor.execute(query, (new_value, primary_key))
 
@@ -314,7 +289,6 @@ class DatabaseEditorWindow(QWidget):
             raise Exception(f"Ошибка сохранения ячеек: {str(e)}")
 
     def save_changes(self):
-        """Ручное сохранение изменений"""
         try:
             if self.modified_cells:
                 self.save_modified_cells()
@@ -329,35 +303,29 @@ class DatabaseEditorWindow(QWidget):
             self.show_error(f"Ошибка сохранения: {str(e)}")
 
     def refresh_data(self):
-        """Обновление данных таблицы"""
         current_table = self.table_combo.currentText()
         self.load_table_data(current_table)
         self.modified_cells.clear()
 
     def add_row(self):
-        """Упрощенное добавление строки"""
         try:
             table_name = self.table_combo.currentData()
             if not table_name:
                 QMessageBox.warning(self, "Ошибка", "Выберите таблицу!")
                 return
 
-            # Получаем колонки таблицы
             columns = self.db_manager.get_table_columns(table_name)
             if not columns:
                 self.show_error("Не удалось получить структуру таблицы")
                 return
 
-            # Исключаем первую колонку (предполагаем что это ID)
             if len(columns) > 1:
-                insert_columns = columns[1:]  # Все колонки кроме первой
+                insert_columns = columns[1:]
             else:
                 insert_columns = columns
 
-            # Формируем значения по умолчанию
             values = ["Новое значение" for _ in insert_columns]
 
-            # Формируем и выполняем INSERT запрос
             placeholders = ", ".join(["?" for _ in insert_columns])
             column_names = ", ".join(insert_columns)
 
@@ -369,7 +337,6 @@ class DatabaseEditorWindow(QWidget):
             self.db_manager.cursor.execute(query, values)
             self.db_manager.connection.commit()
 
-            # Обновляем интерфейс
             self.refresh_data()
 
             self.status_label.setText("Новая строка добавлена в базу данных")
@@ -379,7 +346,6 @@ class DatabaseEditorWindow(QWidget):
             self.show_error(f"Ошибка добавления строки: {str(e)}")
 
     def get_detailed_table_info(self, table_name):
-        """Получает детальную информацию о колонках таблицы"""
         try:
             self.db_manager.cursor.execute(f"PRAGMA table_info({table_name})")
             return self.db_manager.cursor.fetchall()
@@ -388,7 +354,6 @@ class DatabaseEditorWindow(QWidget):
             return []
 
     def prepare_insert_data(self, table_name, table_info):
-        """Подготавливает данные для INSERT запроса"""
         columns = []
         values = []
 
@@ -399,18 +364,14 @@ class DatabaseEditorWindow(QWidget):
             default_value = col_info[4]
             is_primary = col_info[5] == 1
 
-            # Пропускаем AUTOINCREMENT primary keys
             if is_primary and self.is_autoincrement(table_name, col_name):
                 continue
 
-            # Для внешних ключей проверяем существование записей
             if col_name.startswith('ID_') and col_name != 'ID_User':
                 if not self.has_records_for_foreign_key(table_name, col_name):
                     continue
-                # Устанавливаем первый доступный ID
                 values.append(1)
             else:
-                # Используем значение по умолчанию из БД или наше
                 if default_value is not None:
                     values.append(default_value)
                 else:
@@ -426,21 +387,19 @@ class DatabaseEditorWindow(QWidget):
         }
 
     def is_autoincrement(self, table_name, column_name):
-        """Проверяет, является ли поле AUTOINCREMENT"""
-        # В SQLite поле считается AUTOINCREMENT если оно INTEGER PRIMARY KEY
         try:
             self.db_manager.cursor.execute(f"PRAGMA table_info({table_name})")
             columns = self.db_manager.cursor.fetchall()
 
             for col in columns:
-                if col[1] == column_name and col[5] == 1:  # PRIMARY KEY
+                if col[1] == column_name and col[5] == 1:
                     return "INT" in col[2].upper()
             return False
         except Exception:
             return False
 
     def delete_row(self):
-        """Удаление строки из БД"""
+
         try:
             current_index = self.table_view.currentIndex()
             if not current_index.isValid():
@@ -451,7 +410,6 @@ class DatabaseEditorWindow(QWidget):
             columns = self.db_manager.get_table_columns(table_name)
             row = current_index.row()
 
-            # Получаем первичный ключ
             primary_key_item = self.model.item(row, 0)
             if not primary_key_item:
                 QMessageBox.warning(self, "Ошибка", "Не удалось определить ID строки!")
@@ -459,7 +417,6 @@ class DatabaseEditorWindow(QWidget):
 
             primary_key = primary_key_item.text()
 
-            # Подтверждение удаления
             reply = QMessageBox.question(
                 self,
                 "Подтверждение удаления",
@@ -472,7 +429,6 @@ class DatabaseEditorWindow(QWidget):
                 self.db_manager.cursor.execute(query, (primary_key,))
                 self.db_manager.connection.commit()
 
-                # Удаляем из модели только после успешного удаления из БД
                 self.model.removeRow(row)
 
                 self.status_label.setText("Строка удалена из базы данных")

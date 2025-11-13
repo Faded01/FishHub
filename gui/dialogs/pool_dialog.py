@@ -20,12 +20,10 @@ class PoolManagerDialog(QDialog):
     def init_ui(self):
         layout = QVBoxLayout()
 
-        # Заголовок
         title = QLabel("Управление бассейнами")
         title.setObjectName("dialogTitle")
         layout.addWidget(title)
 
-        # Форма добавления/редактирования
         form_group = QGroupBox("Добавить/Редактировать бассейн")
         form_layout = QFormLayout()
 
@@ -56,7 +54,6 @@ class PoolManagerDialog(QDialog):
         self.status_combo.addItems(["Активен", "На обслуживании"])
         form_layout.addRow("Статус:", self.status_combo)
 
-        # Кнопки формы
         form_buttons_layout = QHBoxLayout()
         form_buttons_layout.setSpacing(10)
 
@@ -83,7 +80,6 @@ class PoolManagerDialog(QDialog):
         form_group.setLayout(form_layout)
         layout.addWidget(form_group)
 
-        # Таблица бассейнов
         table_group = QGroupBox("Список бассейнов")
         table_layout = QVBoxLayout()
 
@@ -93,7 +89,6 @@ class PoolManagerDialog(QDialog):
             "ID", "Название", "Объем", "Тип рыбы", "Количество", "Дата зарыбления", "Статус"
         ])
 
-        # Настраиваем растягивание колонок
         header = self.pools_table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
@@ -103,11 +98,9 @@ class PoolManagerDialog(QDialog):
         header.setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(6, QHeaderView.ResizeMode.Stretch)
 
-        # Подключаем обработчик выбора строки
         self.pools_table.cellClicked.connect(self.on_cell_clicked)
         table_layout.addWidget(self.pools_table)
 
-        # Кнопки управления таблицей
         table_buttons_layout = QHBoxLayout()
         table_buttons_layout.setSpacing(10)
 
@@ -127,7 +120,6 @@ class PoolManagerDialog(QDialog):
         table_group.setLayout(table_layout)
         layout.addWidget(table_group)
 
-        # Кнопки диалога
         close_button = QPushButton("Закрыть")
         close_button.clicked.connect(self.reject)
         button_layout = QHBoxLayout()

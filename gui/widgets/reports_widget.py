@@ -22,21 +22,17 @@ class ReportsWidget(QWidget):
         layout = QVBoxLayout()
         layout.setSpacing(10)
 
-        # Заголовок
         title = QLabel("Отчетность и аналитика")
         title.setObjectName("widgetTitle")
         layout.addWidget(title)
 
-        # Параметры отчета
         params_group = QGroupBox("Параметры отчета")
         params_layout = QFormLayout()
 
-        # Тип отчета
         self.report_type_combo = QComboBox()
         self.report_type_combo.currentTextChanged.connect(self.load_report_data)
         params_layout.addRow("Тип отчета:", self.report_type_combo)
 
-        # Период
         dates_layout = QHBoxLayout()
         self.start_date = QDateEdit()
         self.start_date.setDate(QDate.currentDate().addMonths(-1))
@@ -58,7 +54,6 @@ class ReportsWidget(QWidget):
 
         params_layout.addRow("Период:", dates_layout)
 
-        # Кнопки управления
         buttons_layout = QHBoxLayout()
         self.export_btn = QPushButton("Экспорт в Excel")
         self.export_btn.clicked.connect(self.export_report_to_excel)
@@ -74,7 +69,6 @@ class ReportsWidget(QWidget):
         params_group.setLayout(params_layout)
         layout.addWidget(params_group)
 
-        # Таблица отчетов
         table_group = QGroupBox("Список отчетов")
         table_layout = QVBoxLayout()
 
@@ -85,7 +79,6 @@ class ReportsWidget(QWidget):
             "ID", "Тип отчета", "Бассейн", "Период", "Автор", "Дата создания", "Статус", "Действия"
         ])
 
-        # Настройка таблицы
         header = self.report_table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
