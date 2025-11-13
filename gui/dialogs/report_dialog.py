@@ -80,6 +80,8 @@ class ReportDialog(QDialog):
         button_box.accepted.connect(self.save_report)
         button_box.rejected.connect(self.reject)
 
+        button_box.button(QDialogButtonBox.StandardButton.Ok).setText("Создать")
+        button_box.button(QDialogButtonBox.StandardButton.Cancel).setText("Закрыть")
         layout.addWidget(button_box)
         self.setLayout(layout)
 
