@@ -1,4 +1,0 @@
-PyQt6
-numpy
-openpyxl
-pandas
